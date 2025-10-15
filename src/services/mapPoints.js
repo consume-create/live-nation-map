@@ -1,6 +1,5 @@
 import groq from 'groq'
 import { sanityClient, isSanityConfigured } from '../lib/sanityClient'
-import { fallbackMapPoints } from '../data/fallbackMapPoints'
 import { latLonTo3D } from '../usStates'
 
 const mapPointsQuery = groq`
@@ -56,18 +55,15 @@ function mapToRenderable(point) {
 
 export async function fetchMapPoints() {
   if (!isSanityConfigured) {
-    return fallbackMapPoints.map(mapToRenderable).filter(Boolean)
+    console.warn('Sanity client not configured; map points unavailable.')
+    return []
   }
 
   try {
     const data = await sanityClient.fetch(mapPointsQuery)
-    const mapped = data.map(mapToRenderable).filter(Boolean)
-    if (mapped.length > 0) {
-      return mapped
-    }
-    return fallbackMapPoints.map(mapToRenderable).filter(Boolean)
+    return data.map(mapToRenderable).filter(Boolean)
   } catch (error) {
-    console.warn('Failed to fetch Sanity map points, using fallback.', error)
-    return fallbackMapPoints.map(mapToRenderable).filter(Boolean)
+    console.warn('Failed to fetch Sanity map points.', error)
+    return []
   }
 }
