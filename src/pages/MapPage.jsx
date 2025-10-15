@@ -1,17 +1,23 @@
-import { useState, useCallback, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
+import { Suspense, useState, useCallback, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { Vector3, TextureLoader, PlaneGeometry } from 'three'
 import USMap from '../USMap'
 import MapPoint from '../MapPoint'
 import ShaderTester from '../ShaderTester'
 import { isSanityConfigured } from '../lib/sanityClient'
+import CameraController from '../CameraController'
+import FlashlightPlane from '../FlashlightPlane'
 
 export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navigate = useNavigate()
   const [selectedSlug, setSelectedSlug] = useState(null)
   const [showTester, setShowTester] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [cameraTarget, setCameraTarget] = useState(null)
+  const [pendingSlug, setPendingSlug] = useState(null)
+  const [pendingPoint, setPendingPoint] = useState(null)
   const selectedPointScreenRef = useRef(null)
   const navigationTimeoutRef = useRef(null)
 
@@ -24,21 +30,43 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     selectedPointScreenRef.current = { x, y }
   }, [])
 
+  const buildFocusTarget = useCallback((point) => {
+    if (!point || !Array.isArray(point.position)) return null
+    const [px = 0, py = 0] = point.position
+    const worldCenter = new Vector3(px, 12.5, -py)
+    const offset = new Vector3(0, 160, 210)
+    return {
+      position: worldCenter,
+      offset,
+    }
+  }, [])
+
   const handlePointClick = (slug) => {
-    if (isNavigating) return
+    if (isNavigating || cameraTarget) return
     selectedPointScreenRef.current = null
     setSelectedSlug((current) => (current === slug ? null : slug))
   }
 
   const handleSeeMore = () => {
-    if (!selectedPoint?.slug || isNavigating) return
-    if (navigationTimeoutRef.current) {
-      clearTimeout(navigationTimeoutRef.current)
+    if (!selectedPoint?.slug || isNavigating || cameraTarget) return
+
+    const focusTarget = buildFocusTarget(selectedPoint)
+
+    setPendingSlug(selectedPoint.slug)
+    setPendingPoint(selectedPoint)
+
+    if (!focusTarget) {
+      setIsNavigating(true)
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current)
+      }
+      navigationTimeoutRef.current = setTimeout(() => {
+        navigate(`/venue/${selectedPoint.slug}`)
+      }, 3000)
+      return
     }
-    setIsNavigating(true)
-    navigationTimeoutRef.current = setTimeout(() => {
-      navigate(`/venue/${selectedPoint.slug}`)
-    }, 180)
+
+    setCameraTarget(focusTarget)
   }
 
   useEffect(() => {
@@ -49,6 +77,25 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
       }
     }
   }, [])
+
+  const handleCameraComplete = useCallback(() => {
+    if (!pendingSlug) return
+    setCameraTarget(null)
+    setIsNavigating(true)
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current)
+    }
+    navigationTimeoutRef.current = setTimeout(() => {
+      navigate(`/venue/${pendingSlug}`)
+    }, 3000)
+  }, [navigate, pendingSlug])
+
+  useEffect(() => {
+    if (!isNavigating) {
+      setPendingSlug(null)
+      setPendingPoint(null)
+    }
+  }, [isNavigating])
 
   if (showTester) {
     return <ShaderTester onExit={() => setShowTester(false)} />
@@ -106,13 +153,14 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
           screenRef={selectedPointScreenRef}
           onSeeMore={handleSeeMore}
           onClose={() => setSelectedSlug(null)}
-          isLoading={isNavigating}
+          isLoading={isNavigating || Boolean(cameraTarget)}
         />
       )}
 
       <RouteLoaderOverlay
         active={isNavigating}
-        label={selectedPoint?.title}
+        label={pendingPoint?.title || selectedPoint?.title}
+        logoUrl={pendingPoint?.logoUrl || selectedPoint?.logoUrl}
       />
 
       <Canvas>
@@ -126,6 +174,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
           maxDistance={800}
           maxPolarAngle={Math.PI / 2}
         />
+
+        {cameraTarget && (
+          <CameraController targetPosition={cameraTarget} onComplete={handleCameraComplete} />
+        )}
 
         <ambientLight intensity={0.5} />
         <directionalLight position={[100, 200, 100]} intensity={1} castShadow />
@@ -504,7 +556,7 @@ function CursorFollower({ active }) {
   )
 }
 
-function RouteLoaderOverlay({ active, label }) {
+function RouteLoaderOverlay({ active, label, logoUrl }) {
   if (!active) return null
 
   const title = label ? label.toUpperCase() : 'VENUE'
@@ -526,10 +578,65 @@ function RouteLoaderOverlay({ active, label }) {
         textTransform: 'uppercase',
       }}
     >
-      <div style={{ marginBottom: '12px', fontSize: '12px', opacity: 0.75 }}>
+      <div style={{ marginBottom: '24px', fontSize: '12px', opacity: 0.75 }}>
         Loading
+      </div>
+      <div
+        style={{
+          width: '520px',
+          maxWidth: '90vw',
+          height: '320px',
+          marginBottom: '30px',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(10, 10, 10, 0.7)'
+        }}
+      >
+        <Canvas camera={{ position: [0, 0, 500], fov: 30 }} dpr={[1, 1.5]}>
+          <color attach="background" args={[0, 0, 0]} />
+          <ambientLight intensity={0.6} />
+          <pointLight position={[0, 120, 180]} intensity={1.2} />
+          <directionalLight position={[0, -150, -200]} intensity={0.35} />
+          <Suspense fallback={null}>
+            {logoUrl && <LoaderFlashlight logoUrl={logoUrl} />}
+          </Suspense>
+        </Canvas>
+      </div>
+      <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '10px' }}>
+        Preparing Experience
       </div>
       <div style={{ fontSize: '28px', fontWeight: 700 }}>{title}</div>
     </div>
+  )
+}
+
+function LoaderFlashlight({ logoUrl }) {
+  const geometry = useMemo(() => new PlaneGeometry(320, 50), [])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  const texture = useLoader(TextureLoader, logoUrl, (loader) => {
+    loader.setCrossOrigin?.('anonymous')
+  })
+
+  return (
+    <FlashlightPlane
+      texture={texture}
+      geometry={geometry}
+      scale={[0.9, 0.9, 0.9]}
+      position={[0, 0, 0]}
+      configureParams={(params) => {
+        params.radius = 0.63
+        params.feather = 0.83
+        params.intensity = 3.0
+        params.ambient = 0.09
+        params.sweepSpeed = 0.18
+        params.sweepMin = 0.0
+        params.sweepMax = 1.0
+        params.sweepY = 0.5
+        params.pingPong = true
+      }}
+    />
   )
 }
