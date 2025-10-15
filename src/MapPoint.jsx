@@ -47,11 +47,11 @@ export default function MapPoint({ position, label, onClick, selected = false, o
 
   return (
     <group rotation={[Math.PI, 0, 0]} position={[position[0], position[1], 12.5]}>
-      <group ref={groupRef} scale={isActive ? 0.85 : 0.7}>
+      <group ref={groupRef} scale={isActive ? 0.95 : 0.8}>
         <mesh geometry={outerRingGeometry} position={[0, 0, 0]}>
           <meshBasicMaterial
             transparent
-            opacity={isActive ? 1 : 0.35}
+            opacity={isActive ? 1 : 0.75}
             color="#ff0000"
             side={THREE.DoubleSide}
             depthWrite={false}
@@ -61,7 +61,7 @@ export default function MapPoint({ position, label, onClick, selected = false, o
         <mesh geometry={middleRingGeometry} position={[0, 0, 0.25]}>
           <meshBasicMaterial
             transparent
-            opacity={isActive ? 1 : 0.35}
+            opacity={isActive ? 1 : 0.8}
             color="#ff0000"
             side={THREE.DoubleSide}
             depthWrite={false}
@@ -71,7 +71,7 @@ export default function MapPoint({ position, label, onClick, selected = false, o
         <mesh geometry={coreDiskGeometry} position={[0, 0, 0.5]}>
           <meshBasicMaterial
             transparent
-            opacity={isActive ? 1.0 : 0.95}
+            opacity={1.0}
             color={isActive ? '#ff3535' : '#ff1414'}
             side={THREE.DoubleSide}
             depthWrite={false}
