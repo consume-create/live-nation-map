@@ -23,7 +23,9 @@ const mapPointsQuery = groq`
   }
 `
 
-function normaliseGallery(gallery = []) {
+function normaliseGallery(rawGallery) {
+  const gallery = Array.isArray(rawGallery) ? rawGallery : []
+
   return gallery
     .filter((item) => item?.imageUrl)
     .map((item) => ({
