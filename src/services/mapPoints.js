@@ -12,7 +12,7 @@ const mapPointsQuery = groq`
     state,
     location,
     description,
-    "modelUrl": model.asset->url,
+    "heroImageUrl": heroImage.asset->url,
     "logoUrl": logoTexture.asset->url,
     gallery[]{
       _key,
@@ -49,7 +49,7 @@ function mapToRenderable(point) {
     description: point.description,
     location: point.location,
     position: latLonTo3D(lng, lat),
-    modelUrl: point.modelUrl,
+    heroImageUrl: point.heroImageUrl,
     logoUrl: point.logoUrl,
     gallery: normaliseGallery(point.gallery),
   }

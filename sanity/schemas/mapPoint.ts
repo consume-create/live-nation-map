@@ -86,11 +86,11 @@ export default defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
-      name: 'model',
-      title: '3D Model (GLB/GLTF)',
-      type: 'file',
+      name: 'heroImage',
+      title: 'Venue Hero Image',
+      type: 'image',
       options: {
-        accept: '.glb,.gltf,model/gltf-binary,model/gltf+json',
+        hotspot: true,
       },
       validation: (rule) => rule.required(),
     }),
@@ -135,7 +135,6 @@ export default defineType({
                 { name: 'left', title: 'Left (%)', type: 'number' },
                 { name: 'bottom', title: 'Bottom (%)', type: 'number' },
                 { name: 'right', title: 'Right (%)', type: 'number' },
-                { name: 'width', title: 'Width (px)', type: 'number' },
               ],
             }),
           ],
