@@ -95,6 +95,15 @@ export default defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'heroLineAnimation',
+      title: 'Hero Line Animation SVG',
+      type: 'image',
+      options: {
+        accept: '.svg',
+      },
+      description: 'SVG used for line drawing overlay. Should match main hero dimensions.',
+    }),
+    defineField({
       name: 'logoTexture',
       title: 'Flashlight Logo',
       type: 'image',

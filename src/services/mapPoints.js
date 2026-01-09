@@ -13,6 +13,7 @@ const mapPointsQuery = groq`
     location,
     description,
     "heroImageUrl": heroImage.asset->url,
+    "heroLineSvgUrl": heroLineAnimation.asset->url,
     "logoData": {
       "url": logoTexture.asset->url,
       "dimensions": logoTexture.asset->metadata.dimensions
@@ -53,6 +54,7 @@ function mapToRenderable(point) {
     location: point.location,
     position: latLonTo3D(lng, lat),
     heroImageUrl: point.heroImageUrl,
+    heroLineSvgUrl: point.heroLineSvgUrl || point.heroImageUrl,
     logoUrl: point.logoData?.url,
     logoAspectRatio: point.logoData?.dimensions?.aspectRatio || 5.2,
     logoDimensions: {
