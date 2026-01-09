@@ -8,6 +8,83 @@ import MapPoint from '../MapPoint'
 import ShaderTester from '../ShaderTester'
 import { isSanityConfigured } from '../lib/sanityClient'
 import CameraController from '../CameraController'
+import { US_BOUNDS } from '../usStates'
+
+function generateKey(point, idx) {
+  return point._id || point.slug || idx
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function resolveSpacedPoints(points, minDistance) {
+  if (!Array.isArray(points) || !points.length) return points
+  if (!minDistance || !Number.isFinite(minDistance)) return points
+
+  const halfWidth = US_BOUNDS.width / 2
+  const halfHeight = US_BOUNDS.height / 2
+
+  const working = points
+    .map((point, idx) => ({
+      key: generateKey(point, idx),
+      original: point,
+      pos: Array.isArray(point.position) ? [...point.position] : null,
+    }))
+    .filter((entry) => Array.isArray(entry.pos))
+
+  const iterations = 8
+  for (let iter = 0; iter < iterations; iter += 1) {
+    for (let i = 0; i < working.length; i += 1) {
+      for (let j = i + 1; j < working.length; j += 1) {
+        const a = working[i]
+        const b = working[j]
+        const dx = b.pos[0] - a.pos[0]
+        const dy = b.pos[1] - a.pos[1]
+        const dist = Math.hypot(dx, dy) || 0.0001
+
+        if (dist >= minDistance) continue
+
+        const overlap = (minDistance - dist) / 2
+        const seed = (i + 1) * (j + 3)
+        const directionX = dist === 0 ? Math.cos(seed) : dx / dist
+        const directionY = dist === 0 ? Math.sin(seed) : dy / dist
+
+        a.pos[0] -= directionX * overlap
+        a.pos[1] -= directionY * overlap
+        b.pos[0] += directionX * overlap
+        b.pos[1] += directionY * overlap
+
+        a.pos[0] = clamp(a.pos[0], -halfWidth, halfWidth)
+        a.pos[1] = clamp(a.pos[1], -halfHeight, halfHeight)
+        b.pos[0] = clamp(b.pos[0], -halfWidth, halfWidth)
+        b.pos[1] = clamp(b.pos[1], -halfHeight, halfHeight)
+      }
+    }
+  }
+
+  const adjusted = new Map()
+  working.forEach((entry) => {
+    adjusted.set(entry.key, entry.pos)
+  })
+
+  return points.map((point, idx) => {
+    const key = generateKey(point, idx)
+    const nextPosition = adjusted.get(key)
+    if (!nextPosition) return point
+    if (
+      Array.isArray(point.position) &&
+      Math.abs(point.position[0] - nextPosition[0]) < 0.001 &&
+      Math.abs(point.position[1] - nextPosition[1]) < 0.001
+    ) {
+      return point
+    }
+    return {
+      ...point,
+      adjustedPosition: nextPosition,
+    }
+  })
+}
 
 export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navigate = useNavigate()
@@ -16,13 +93,12 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [cameraTarget, setCameraTarget] = useState(null)
   const [pendingSlug, setPendingSlug] = useState(null)
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 1440 : window.innerWidth,
+    height: typeof window === 'undefined' ? 900 : window.innerHeight,
+  }))
   const selectedPointScreenRef = useRef(null)
   const navigationTimeoutRef = useRef(null)
-
-  const selectedPoint = useMemo(
-    () => mapPoints.find((point) => point.slug === selectedSlug) || null,
-    [mapPoints, selectedSlug]
-  )
 
   const handleProjectUpdate = useCallback(({ x, y }) => {
     selectedPointScreenRef.current = { x, y }
@@ -91,6 +167,35 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
       setPendingSlug(null)
     }
   }, [isNavigating])
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const handleResize = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const minWorldDistance = useMemo(() => {
+    const widthRatio = US_BOUNDS.width / Math.max(viewport.width, 320)
+    return Math.max(8, 18 * widthRatio)
+  }, [viewport.width])
+
+  const spacedPoints = useMemo(
+    () => resolveSpacedPoints(mapPoints, minWorldDistance),
+    [mapPoints, minWorldDistance]
+  )
+
+  const selectedPoint = useMemo(
+    () => spacedPoints.find((point) => point.slug === selectedSlug) || null,
+    [spacedPoints, selectedSlug]
+  )
 
   if (showTester) {
     return <ShaderTester onExit={() => setShowTester(false)} />
@@ -176,12 +281,12 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         <USMap />
 
         <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-          {mapPoints
-            .filter((point) => Array.isArray(point.position))
+          {spacedPoints
+            .filter((point) => Array.isArray(point.adjustedPosition || point.position))
             .map((point) => (
               <MapPoint
                 key={point._id || point.slug}
-                position={point.position}
+                position={point.adjustedPosition || point.position}
                 label={point.title}
                 onClick={() => handlePointClick(point.slug)}
                 selected={selectedPoint?.slug === point.slug}
