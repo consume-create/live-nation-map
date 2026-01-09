@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useEffect } from 'react'
+import { Suspense, useMemo, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { TextureLoader, PlaneGeometry } from 'three'
@@ -8,6 +8,16 @@ import VenueGalleryModule from '../modules/VenueGalleryModule'
 export default function VenuePage({ mapPoints, pointsLoading }) {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1440 : window.innerWidth
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const venue = useMemo(() => {
     return mapPoints.find((point) => point.slug === slug) || null
@@ -31,7 +41,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
             style={{
               marginTop: '20px',
               padding: '12px 24px',
-              background: '#ff2b2b',
+              background: '#4a90e2',
               border: 'none',
               borderRadius: '8px',
               color: 'white',
@@ -62,8 +72,12 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     backgroundPosition: 'center',
     color: '#fff',
     position: 'relative',
-    overflow: 'hidden',
+    paddingTop: '80px',
+    paddingBottom: '60px',
   }
+
+  const heroShift =
+    viewportWidth <= 680 ? -22 : viewportWidth <= 1100 ? -38 : viewportWidth <= 1400 ? -50 : -58
 
   return (
     <div
@@ -108,7 +122,24 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
             zIndex: 5,
           }}
         >
-          {venue.logoUrl && <LogoFlashlightPanel logoUrl={venue.logoUrl} />}
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: `translateY(${heroShift}%)`,
+            }}
+          >
+            {venue.logoUrl && (
+              <LogoFlashlightPanel
+                logoUrl={venue.logoUrl}
+                aspectRatio={venue.logoAspectRatio}
+                logoDimensions={venue.logoDimensions}
+                viewportWidth={viewportWidth}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -119,37 +150,94 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   )
 }
 
-function LogoFlashlightPanel({ logoUrl }) {
+function LogoFlashlightPanel({
+  logoUrl,
+  aspectRatio = 5.2,
+  logoDimensions = {},
+  viewportWidth,
+}) {
   if (!logoUrl) return null
+
+  const widthFromMeta =
+    typeof logoDimensions.width === 'number' && logoDimensions.width > 0 ? logoDimensions.width : null
+  const heightFromMeta =
+    typeof logoDimensions.height === 'number' && logoDimensions.height > 0
+      ? logoDimensions.height
+      : null
+
+  const safeAspect =
+    widthFromMeta && heightFromMeta
+      ? widthFromMeta / heightFromMeta
+      : Number(aspectRatio) > 0.05
+        ? aspectRatio
+        : 5.2
+
+  const isMobile = viewportWidth <= 768
+  const panelWidth = isMobile ? 'min(85vw, 520px)' : 'min(55vw, 960px)'
+  const planeScale = 0.92
+
+  const containerStyle = {
+    width: panelWidth,
+    maxWidth: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+    background: 'rgba(0,0,0,0.2)',
+    borderRadius: '16px',
+    boxShadow: '0 40px 90px rgba(0,0,0,0.65)',
+  }
+
+  const ratioWrapperStyle = {
+    width: '100%',
+    position: 'relative',
+    paddingTop: `${100 / safeAspect}%`,
+    overflow: 'hidden',
+    borderRadius: '12px',
+  }
 
   return (
     <div
-      style={{
-        width: '420px',
-        maxWidth: '90vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'transparent',
-      }}
+      style={containerStyle}
     >
-      <Canvas
-        camera={{ position: [0, 0, 450], fov: 30 }}
-        dpr={[1, 1.5]}
-        gl={{ alpha: true, premultipliedAlpha: false }}
+      <div
+        style={ratioWrapperStyle}
       >
-        <ambientLight intensity={0.55} />
-        <pointLight position={[0, 120, 160]} intensity={1.1} />
-        <Suspense fallback={null}>
-          <LogoFlashlight logoUrl={logoUrl} />
-        </Suspense>
-      </Canvas>
+        <Canvas
+          orthographic
+          camera={{
+            position: [0, 0, 10],
+            zoom: 1,
+            left: -safeAspect / 2,
+            right: safeAspect / 2,
+            top: 0.5,
+            bottom: -0.5,
+            near: 0,
+            far: 1000,
+          }}
+          dpr={[1, 1.5]}
+          gl={{ alpha: true, premultipliedAlpha: false }}
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          <ambientLight intensity={0.55} />
+          <pointLight position={[0, 120, 160]} intensity={1.1} />
+          <Suspense fallback={null}>
+            <LogoFlashlight
+              logoUrl={logoUrl}
+              planeWidth={safeAspect}
+              planeHeight={1}
+              scaleMultiplier={planeScale}
+            />
+          </Suspense>
+        </Canvas>
+      </div>
     </div>
   )
 }
 
-function LogoFlashlight({ logoUrl }) {
-  const geometry = useMemo(() => new PlaneGeometry(320, 60), [])
+function LogoFlashlight({ logoUrl, scaleMultiplier = 1, planeWidth = 640, planeHeight = 120 }) {
+  const geometry = useMemo(() => new PlaneGeometry(planeWidth, planeHeight), [planeWidth, planeHeight])
 
   useEffect(() => () => geometry.dispose(), [geometry])
 
@@ -161,7 +249,7 @@ function LogoFlashlight({ logoUrl }) {
     <FlashlightPlane
       texture={texture}
       geometry={geometry}
-      scale={[1.1, 1.1, 1.1]}
+      scale={[scaleMultiplier, scaleMultiplier, scaleMultiplier]}
       position={[0, 0, 0]}
       configureParams={(params) => {
         params.radius = 0.58

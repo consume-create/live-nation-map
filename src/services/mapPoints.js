@@ -13,7 +13,10 @@ const mapPointsQuery = groq`
     location,
     description,
     "heroImageUrl": heroImage.asset->url,
-    "logoUrl": logoTexture.asset->url,
+    "logoData": {
+      "url": logoTexture.asset->url,
+      "dimensions": logoTexture.asset->metadata.dimensions
+    },
     gallery[]{
       _key,
       title,
@@ -50,7 +53,12 @@ function mapToRenderable(point) {
     location: point.location,
     position: latLonTo3D(lng, lat),
     heroImageUrl: point.heroImageUrl,
-    logoUrl: point.logoUrl,
+    logoUrl: point.logoData?.url,
+    logoAspectRatio: point.logoData?.dimensions?.aspectRatio || 5.2,
+    logoDimensions: {
+      width: point.logoData?.dimensions?.width || null,
+      height: point.logoData?.dimensions?.height || null,
+    },
     gallery: normaliseGallery(point.gallery),
   }
 }
