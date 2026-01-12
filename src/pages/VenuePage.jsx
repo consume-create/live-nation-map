@@ -4,6 +4,7 @@ import { Canvas, useLoader } from '@react-three/fiber'
 import { TextureLoader, PlaneGeometry } from 'three'
 import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
+import VenueAboutModule from '../modules/VenueAboutModule'
 
 let heroSvgStylesInjected = false
 function ensureHeroSvgStyles() {
@@ -261,6 +262,8 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
           ← Back to Map
         </button>
       </div>
+
+      {venue.aboutModule && <VenueAboutModule about={venue.aboutModule} />}
 
       {venue.gallery && venue.gallery.length > 0 && (
         <VenueGalleryModule images={venue.gallery} />

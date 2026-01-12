@@ -165,6 +165,71 @@ export default defineType({
       validation: (rule) => rule.max(5),
     }),
     defineField({
+      name: 'aboutModule',
+      title: 'About Module',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'video',
+          title: 'Feature Video',
+          type: 'file',
+          options: {
+            accept: 'video/*',
+          },
+        }),
+        defineField({
+          name: 'videoPoster',
+          title: 'Video Poster Image',
+          type: 'image',
+          options: { hotspot: true },
+        }),
+        defineField({
+          name: 'description',
+          title: 'Description',
+          type: 'array',
+          of: [{ type: 'block' }],
+        }),
+        defineField({
+          name: 'services',
+          title: 'Services',
+          type: 'array',
+          of: [{ type: 'string' }],
+        }),
+        defineField({
+          name: 'partners',
+          title: 'Partners',
+          type: 'array',
+          of: [
+            defineField({
+              name: 'partner',
+              title: 'Partner',
+              type: 'object',
+              fields: [
+                defineField({ name: 'name', title: 'Name', type: 'string' }),
+                defineField({ name: 'title', title: 'Title / Role', type: 'string' }),
+              ],
+            }),
+          ],
+        }),
+        defineField({
+          name: 'crew',
+          title: 'Crew',
+          type: 'array',
+          of: [
+            defineField({
+              name: 'crewMember',
+              title: 'Crew Member',
+              type: 'object',
+              fields: [
+                defineField({ name: 'name', title: 'Name', type: 'string' }),
+                defineField({ name: 'title', title: 'Title / Role', type: 'string' }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+    defineField({
       name: 'description',
       title: 'Description',
       type: 'text',

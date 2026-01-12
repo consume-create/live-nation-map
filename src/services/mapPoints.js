@@ -26,6 +26,21 @@ const mapPointsQuery = groq`
         "url": image.asset->url,
         "dimensions": image.asset->metadata.dimensions
       }
+    },
+    aboutModule{
+      "videoUrl": video.asset->url,
+      "videoType": video.asset->mimeType,
+      "videoPosterUrl": videoPoster.asset->url,
+      description,
+      services,
+      partners[]{
+        name,
+        title
+      },
+      crew[]{
+        name,
+        title
+      }
     }
   }
 `
@@ -90,6 +105,7 @@ function mapToRenderable(point) {
       height: point.logoData?.dimensions?.height || null,
     },
     gallery: normaliseGallery(point.gallery),
+    aboutModule: point.aboutModule || null,
   }
 }
 
