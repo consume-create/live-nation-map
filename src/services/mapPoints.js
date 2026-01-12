@@ -22,7 +22,10 @@ const mapPointsQuery = groq`
       _key,
       title,
       position,
-      "imageUrl": image.asset->url
+      "imageData": {
+        "url": image.asset->url,
+        "dimensions": image.asset->metadata.dimensions
+      }
     }
   }
 `
@@ -31,12 +34,37 @@ function normaliseGallery(rawGallery) {
   const gallery = Array.isArray(rawGallery) ? rawGallery : []
 
   return gallery
-    .filter((item) => item?.imageUrl)
+    .map((item) => {
+      const dimensions = item?.imageData?.dimensions || {}
+      const width = typeof dimensions.width === 'number' ? dimensions.width : null
+      const height = typeof dimensions.height === 'number' ? dimensions.height : null
+      const aspectFromMeta =
+        typeof dimensions.aspectRatio === 'number' && dimensions.aspectRatio > 0
+          ? dimensions.aspectRatio
+          : null
+      const aspectFromSize =
+        width && height && width > 0 && height > 0 ? width / height : null
+      const aspectRatio = aspectFromMeta || aspectFromSize || null
+
+      return {
+        _key: item?._key,
+        title: item?.title,
+        position: item?.position,
+        imageUrl: item?.imageData?.url,
+        width,
+        height,
+        aspectRatio,
+      }
+    })
+    .filter((item) => Boolean(item?.imageUrl))
     .map((item) => ({
       _key: item._key || item.imageUrl,
       title: item.title || '',
       imageUrl: item.imageUrl,
       position: item.position || {},
+      width: item.width,
+      height: item.height,
+      aspectRatio: item.aspectRatio,
     }))
 }
 

@@ -21,6 +21,12 @@ function ensureHeroSvgStyles() {
   heroSvgStylesInjected = true
 }
 
+const FLASHLIGHT_PLANE_BASE_HEIGHT = 120
+const FLASHLIGHT_SCALE_BASE = 1.1
+const FLASHLIGHT_CAMERA_FOV = 30
+const FLASHLIGHT_CAMERA_DISTANCE = 450
+const FLASHLIGHT_FOV_RAD = (FLASHLIGHT_CAMERA_FOV * Math.PI) / 180
+
 function normalizeSvgElement(svg) {
   if (!svg) return
   let viewBox = svg.getAttribute('viewBox')
@@ -49,6 +55,9 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   const [heroLineSvgMarkup, setHeroLineSvgMarkup] = useState(null)
   const [heroSvgReady, setHeroSvgReady] = useState(false)
   const [showHeroLoader, setShowHeroLoader] = useState(true)
+  const loaderStartRef = useRef(0)
+  const loaderTimeoutRef = useRef(null)
+  const heroLoadStartRef = useRef(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -58,10 +67,13 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   }, [])
 
   useEffect(() => {
-    if (!showHeroLoader) return undefined
-    const timer = setTimeout(() => setShowHeroLoader(false), 2500)
-    return () => clearTimeout(timer)
-  }, [showHeroLoader])
+    return () => {
+      if (loaderTimeoutRef.current) {
+        clearTimeout(loaderTimeoutRef.current)
+        loaderTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const venue = useMemo(() => {
     return mapPoints.find((point) => point.slug === slug) || null
@@ -76,8 +88,42 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     setHeroLineSvgMarkup(null)
     setHeroSvgReady(false)
 
-    if (!heroUrl) return () => {
-      cancelled = true
+    if (loaderTimeoutRef.current) {
+      clearTimeout(loaderTimeoutRef.current)
+      loaderTimeoutRef.current = null
+    }
+
+    if (!heroUrl) {
+      setShowHeroLoader(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    loaderStartRef.current = Date.now()
+    heroLoadStartRef.current = loaderStartRef.current
+    console.log(`[VenuePage] Hero loader shown for "${slug}" at ${new Date(loaderStartRef.current).toISOString()}`)
+    setShowHeroLoader(true)
+
+    function finishLoader() {
+      if (cancelled) return
+      const minDisplayMs = 3000
+      const elapsed = Date.now() - loaderStartRef.current
+      const remaining = Math.max(0, minDisplayMs - elapsed)
+      if (remaining === 0) {
+        setShowHeroLoader(false)
+        console.log(`[VenuePage] Loader hidden immediately after ${elapsed}ms for "${slug}"`)
+        return
+      }
+      loaderTimeoutRef.current = setTimeout(() => {
+        loaderTimeoutRef.current = null
+        if (!cancelled) {
+          setShowHeroLoader(false)
+          console.log(
+            `[VenuePage] Loader hidden after delay ${remaining}ms (elapsed ${elapsed}ms) for "${slug}"`
+          )
+        }
+      }, remaining)
     }
 
     async function loadSvg(url) {
@@ -106,7 +152,9 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
           setHeroSvgMarkup(svgText)
           setHeroLineSvgMarkup(lineText)
           setHeroSvgReady(true)
-          setShowHeroLoader(false)
+          const loadDuration = Date.now() - heroLoadStartRef.current
+          console.log(`[VenuePage] Hero assets ready for "${slug}" in ${loadDuration}ms`)
+          finishLoader()
         }
       } catch (error) {
         console.warn('Failed to load hero SVG', error)
@@ -114,6 +162,9 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
           setHeroSvgMarkup(null)
           setHeroLineSvgMarkup(null)
           setHeroSvgReady(false)
+          const failDuration = Date.now() - heroLoadStartRef.current
+          console.log(`[VenuePage] Hero asset load failed for "${slug}" after ${failDuration}ms`)
+          finishLoader()
         }
       }
     }
@@ -124,39 +175,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     }
   }, [heroUrl, heroLineSvgUrl])
 
-  if (!venue) {
-    return (
-      <div style={{ width: '100vw', height: '100vh', background: '#030303', color: '#fff' }}>
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-          }}
-        >
-          <h1>{pointsLoading ? 'Loading Venue…' : 'Venue Not Found'}</h1>
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              marginTop: '20px',
-              padding: '12px 24px',
-              background: '#4a90e2',
-              border: 'none',
-              borderRadius: '8px',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            ← Back to Map
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!venue) return null
 
   const heroStyle = {
     width: '100%',
@@ -212,10 +231,13 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       )}
 
       <div style={heroStyle}>
-        {heroSvgReady && heroSvgMarkup && (
+        {heroSvgReady && !showHeroLoader && heroSvgMarkup && (
           <>
             <HeroStaticSVG markup={heroSvgMarkup} />
-            <HeroSVGAnimator markup={heroLineSvgMarkup || heroSvgMarkup} />
+            <HeroSVGAnimator
+              markup={heroLineSvgMarkup || heroSvgMarkup}
+              venueSlug={venue.slug}
+            />
           </>
         )}
 
@@ -272,7 +294,7 @@ function HeroStaticSVG({ markup }) {
   )
 }
 
-function HeroSVGAnimator({ markup, accelerate = true }) {
+function HeroSVGAnimator({ markup, accelerate = true, venueSlug }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -283,6 +305,11 @@ function HeroSVGAnimator({ markup, accelerate = true }) {
     const svg = container.querySelector('svg')
     if (!svg) return undefined
     normalizeSvgElement(svg)
+    if (venueSlug) {
+      console.log(`[VenuePage] Starting hero line animation for "${venueSlug}"`)
+    } else {
+      console.log('[VenuePage] Starting hero line animation (slug unknown)')
+    }
 
     const drawables = svg.querySelectorAll('path, line, polyline, polygon')
     drawables.forEach((el, idx) => {
@@ -302,7 +329,7 @@ function HeroSVGAnimator({ markup, accelerate = true }) {
       el.style.animationDelay = `${idx * delayStep}s`
     })
     return undefined
-  }, [markup, accelerate])
+  }, [markup, accelerate, venueSlug])
 
   return (
     <div
@@ -330,18 +357,27 @@ function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, 
     widthFromMeta && heightFromMeta
       ? widthFromMeta / heightFromMeta
       : Number(aspectRatio) > 0.05
-        ? aspectRatio
+        ? Number(aspectRatio)
         : 5.2
 
+  const [displayAspect, setDisplayAspect] = useState(() => safeAspect)
+
+  useEffect(() => {
+    setDisplayAspect(safeAspect)
+  }, [safeAspect])
+
   const isMobile = viewportWidth <= 768
-  const panelWidth = isMobile ? '70vw' : '50vw'
-  const scaleMultiplier = isMobile ? 1.2 : 1.05
+  const rawWidth = viewportWidth * (isMobile ? 0.8 : 0.5)
+  const clampedWidth = Math.max(220, rawWidth)
+  const panelWidth = `${clampedWidth}px`
+  const scaleMultiplier = isMobile ? 0.95 : 0.85
+  const baseScale = FLASHLIGHT_SCALE_BASE * scaleMultiplier
 
   return (
     <div
       style={{
         width: panelWidth,
-        maxWidth: '90vw',
+        maxWidth: isMobile ? '90vw' : '60vw',
         height: 'auto',
         display: 'flex',
         alignItems: 'center',
@@ -354,12 +390,12 @@ function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, 
       <div
         style={{
           width: '100%',
-          aspectRatio: `${safeAspect} / 1`,
-          minHeight: 140,
+          aspectRatio: `${displayAspect} / 1`,
+          minHeight: isMobile ? 200 : 260,
         }}
       >
         <Canvas
-          camera={{ position: [0, 0, 450], fov: 30 }}
+          camera={{ position: [0, 0, FLASHLIGHT_CAMERA_DISTANCE], fov: FLASHLIGHT_CAMERA_FOV }}
           dpr={[1, 1.5]}
           gl={{ alpha: true, premultipliedAlpha: false }}
           style={{ width: '100%', height: '100%' }}
@@ -367,7 +403,17 @@ function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, 
           <ambientLight intensity={0.55} />
           <pointLight position={[0, 120, 160]} intensity={1.1} />
           <Suspense fallback={null}>
-            <LogoFlashlight logoUrl={logoUrl} scaleMultiplier={scaleMultiplier} />
+            <LogoFlashlight
+              logoUrl={logoUrl}
+              scaleMultiplier={scaleMultiplier}
+              aspectRatio={displayAspect}
+              onAspectResolved={(ratio) => {
+                if (typeof ratio === 'number' && ratio > 0 && Math.abs(ratio - displayAspect) > 0.01) {
+                  setDisplayAspect(ratio)
+                }
+              }}
+              viewportWidth={viewportWidth}
+            />
           </Suspense>
         </Canvas>
       </div>
@@ -375,20 +421,54 @@ function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, 
   )
 }
 
-function LogoFlashlight({ logoUrl, scaleMultiplier = 1 }) {
-  const geometry = useMemo(() => new PlaneGeometry(320, 60), [])
+function LogoFlashlight({ logoUrl, aspectRatio = 5.2, scaleMultiplier = 1, onAspectResolved }) {
+  const resolvedAspect = useMemo(
+    () => (Number(aspectRatio) > 0.05 ? Number(aspectRatio) : 5.2),
+    [aspectRatio]
+  )
+  const geometry = useMemo(() => {
+    const width = FLASHLIGHT_PLANE_BASE_HEIGHT * resolvedAspect
+    return new PlaneGeometry(width, FLASHLIGHT_PLANE_BASE_HEIGHT)
+  }, [resolvedAspect])
 
-  useEffect(() => () => geometry.dispose(), [geometry])
+  useEffect(
+    () => () => {
+      geometry.dispose()
+    },
+    [geometry]
+  )
 
   const texture = useLoader(TextureLoader, logoUrl, (loader) => {
     loader.setCrossOrigin?.('anonymous')
   })
 
+  useEffect(() => {
+    if (!texture?.image) return undefined
+    const image = texture.image
+    const width = image.naturalWidth || image.videoWidth || image.width
+    const height = image.naturalHeight || image.videoHeight || image.height
+    if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
+      const ratio = width / height
+      if (ratio > 0 && typeof onAspectResolved === 'function') {
+        onAspectResolved(ratio)
+      }
+    }
+    return undefined
+  }, [texture, onAspectResolved])
+
+  const viewWidthAtCamera =
+    2 * FLASHLIGHT_CAMERA_DISTANCE * Math.tan(Math.max(FLASHLIGHT_FOV_RAD / 2, 0.001))
+  const planeWidth = FLASHLIGHT_PLANE_BASE_HEIGHT * resolvedAspect
+  const baseScale = FLASHLIGHT_SCALE_BASE * scaleMultiplier
+  const scaledPlaneWidth = planeWidth * baseScale
+  const fitScale = scaledPlaneWidth > viewWidthAtCamera ? viewWidthAtCamera / scaledPlaneWidth : 1
+  const finalScale = baseScale * fitScale
+
   return (
     <FlashlightPlane
       texture={texture}
       geometry={geometry}
-      scale={[1.1 * scaleMultiplier, 1.1 * scaleMultiplier, 1.1 * scaleMultiplier]}
+      scale={[finalScale, finalScale, finalScale]}
       position={[0, 0, 0]}
       configureParams={(params) => {
         params.radius = 0.58

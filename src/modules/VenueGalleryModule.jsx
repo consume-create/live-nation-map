@@ -1,38 +1,42 @@
-const LAYOUT_PATTERN = [
-  { top: 6, left: 6 },
-  { top: 10, left: 38 },
-  { top: 12, left: 68 },
-  { top: 42, left: 16 },
-  { top: 40, left: 48 },
-  { top: 68, left: 26 },
-  { top: 66, left: 70 },
+import { useState, useEffect } from 'react'
+
+const DEFAULT_IMAGE_ASPECT = 4 / 3
+const CARD_VARIATIONS = [
+  { justify: 'flex-start', translateX: '-6%', translateY: '-8%' },
+  { justify: 'center', translateX: '4%', translateY: '-10%' },
+  { justify: 'flex-end', translateX: '2%', translateY: '-2%' },
+  { justify: 'flex-start', translateX: '-2%', translateY: '10%' },
+  { justify: 'center', translateX: '6%', translateY: '4%' },
+  { justify: 'flex-end', translateX: '-4%', translateY: '12%' },
+  { justify: 'center', translateX: '0%', translateY: '-4%' },
 ]
 
-const BLOCK_HEIGHT = 580
-const BLOCK_GAP = 160
-const DEFAULT_IMAGE_WIDTH = 320
-const IMAGE_ASPECT_RATIO = '4 / 3'
-
-function hasManualPosition(position = {}) {
-  return ['top', 'left', 'bottom', 'right'].some((key) => typeof position[key] === 'number')
-}
-
-function getManualCoordinates(position = {}) {
-  const coords = {}
-  if (typeof position.top === 'number') coords.top = `${position.top}%`
-  if (typeof position.left === 'number') coords.left = `${position.left}%`
-  if (typeof position.bottom === 'number') coords.bottom = `${position.bottom}%`
-  if (typeof position.right === 'number') coords.right = `${position.right}%`
-  if (!('left' in coords) && !('right' in coords)) coords.left = '50%'
-  if (!('top' in coords) && !('bottom' in coords)) coords.top = '50%'
-  return coords
+function getAspectRatio(item) {
+  if (typeof item?.aspectRatio === 'number' && item.aspectRatio > 0) return item.aspectRatio
+  const { width, height } = item || {}
+  if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
+    return width / height
+  }
+  return DEFAULT_IMAGE_ASPECT
 }
 
 export default function VenueGalleryModule({ images = [] }) {
-  if (!images.length) return null
+  if (!Array.isArray(images) || !images.length) return null
 
-  const cycles = Math.ceil(images.length / LAYOUT_PATTERN.length)
-  const groupCount = Math.max(cycles, 1)
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1440 : window.innerWidth
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const isCompact = viewportWidth < 900
+  const columnGap = isCompact ? 'clamp(24px, 4vw, 60px)' : 'clamp(48px, 5vw, 140px)'
+  const rowGap = isCompact ? 48 : 80
 
   return (
     <section
@@ -40,7 +44,7 @@ export default function VenueGalleryModule({ images = [] }) {
         width: '100%',
         position: 'relative',
         overflow: 'hidden',
-        padding: '100px 5vw 140px',
+        padding: '120px clamp(32px, 6vw, 140px) 160px',
         backgroundColor: '#050505',
         backgroundImage: `
           linear-gradient(rgba(200, 0, 0, 0.12) 1px, transparent 1px),
@@ -50,88 +54,85 @@ export default function VenueGalleryModule({ images = [] }) {
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
-      <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
-        {Array.from({ length: groupCount }).map((_, cycleIdx) => {
-          const start = cycleIdx * LAYOUT_PATTERN.length
-          const batch = images.slice(start, start + LAYOUT_PATTERN.length)
+      <div style={{ maxWidth: '1800px', margin: '0 auto' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isCompact
+              ? 'repeat(auto-fit, minmax(220px, 1fr))'
+              : 'repeat(auto-fit, minmax(280px, 1fr))',
+            columnGap,
+            rowGap: `${rowGap}px`,
+            alignItems: 'start',
+          }}
+        >
+          {images.map((item, idx) => {
+            const label = item.title || item.label || ''
+            const aspectRatio = getAspectRatio(item)
+            const variation = CARD_VARIATIONS[idx % CARD_VARIATIONS.length] || {}
+            const translateX = !isCompact && variation.translateX ? variation.translateX : '0%'
+            const translateY = !isCompact && variation.translateY ? variation.translateY : '0%'
+            const justifySelf = variation.justify || 'center'
 
-          return (
-            <div
-              key={`venue-gallery-cycle-${cycleIdx}`}
-              style={{
-                position: 'relative',
-                minHeight: BLOCK_HEIGHT,
-                marginBottom: cycleIdx === groupCount - 1 ? 0 : BLOCK_GAP,
-              }}
-            >
-              {batch.map((item, idx) => {
-                const label = item.title || item.label || ''
-                const patternIndex = idx % LAYOUT_PATTERN.length
-                const fallbackLayout = LAYOUT_PATTERN[patternIndex] || LAYOUT_PATTERN[0]
-                const useManual = hasManualPosition(item.position)
-                const coords = useManual
-                  ? getManualCoordinates(item.position)
-                  : {
-                      top: `${fallbackLayout.top}%`,
-                      left: `${fallbackLayout.left}%`,
-                      transform: 'translate(-50%, -50%)',
-                    }
-
-                return (
-                  <figure
-                    key={item._key || `${item.imageUrl}-${idx}`}
+            return (
+              <figure
+                key={item._key || `${item.imageUrl}-${idx}`}
+                style={{
+                  margin: 0,
+                  width: '100%',
+                  maxWidth: isCompact ? '100%' : 'min(440px, 32vw)',
+                  justifySelf,
+                  transform:
+                    translateX !== '0%' || translateY !== '0%'
+                      ? `translate(${translateX}, ${translateY})`
+                      : 'none',
+                  transition: 'transform 0.3s ease',
+                }}
+              >
+                {label && (
+                  <figcaption
                     style={{
-                      margin: 0,
-                      position: 'absolute',
-                      width: DEFAULT_IMAGE_WIDTH,
-                      aspectRatio: IMAGE_ASPECT_RATIO,
-                      ...coords,
+                      fontSize: 13,
+                      fontFamily: 'Orbitron, sans-serif',
+                      letterSpacing: '0.3em',
+                      textTransform: 'uppercase',
+                      color: '#fff',
+                      marginBottom: 12,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
                     }}
                   >
-                    <div
-                      style={{
-                        position: 'relative',
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: '#0c0c0c',
-                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.55)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                      }}
-                    >
-                      <img
-                        src={item.imageUrl || item.src}
-                        alt={label}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                      {label && (
-                        <figcaption
-                          style={{
-                            position: 'absolute',
-                            top: '-32px',
-                            left: 0,
-                            fontSize: 13,
-                            fontFamily: 'Orbitron, sans-serif',
-                            letterSpacing: '0.3em',
-                            textTransform: 'uppercase',
-                            color: '#fff',
-                          }}
-                        >
-                          {label}
-                          <span style={{ marginLeft: 8 }}> /</span>
-                        </figcaption>
-                      )}
-                    </div>
-                  </figure>
-                )
-              })}
-            </div>
-          )
-        })}
+                    <span>{label}</span>
+                    <span>/</span>
+                  </figcaption>
+                )}
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio,
+                    backgroundColor: '#0c0c0c',
+                    boxShadow: '0 24px 45px rgba(0, 0, 0, 0.6)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img
+                    src={item.imageUrl || item.src}
+                    alt={label}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    loading="lazy"
+                  />
+                </div>
+              </figure>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
