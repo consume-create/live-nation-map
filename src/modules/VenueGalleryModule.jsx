@@ -93,8 +93,7 @@ export default function VenueGalleryModule({ images = [] }) {
                   <figcaption
                     style={{
                       fontSize: 13,
-                      fontFamily: 'Orbitron, sans-serif',
-                      letterSpacing: '0.3em',
+                      fontFamily: 'var(--font-display, "Poppins", sans-serif)',
                       textTransform: 'uppercase',
                       color: '#fff',
                       marginBottom: 12,

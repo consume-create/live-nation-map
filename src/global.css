@@ -1,0 +1,37 @@
+@import url("https://use.typekit.net/acz6yaf.css");
+
+:root {
+  --font-display: "poppins", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "poppins", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background-color: #030303;
+  color: #fff;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+p {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
