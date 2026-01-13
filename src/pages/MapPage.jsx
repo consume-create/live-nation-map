@@ -1,7 +1,7 @@
 import { useState, useCallback, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { PerspectiveCamera } from '@react-three/drei'
 import { Vector3 } from 'three'
 import USMap from '../USMap'
 import MapPoint from '../MapPoint'
@@ -9,6 +9,7 @@ import ShaderTester from '../ShaderTester'
 import { isSanityConfigured } from '../lib/sanityClient'
 import CameraController from '../CameraController'
 import { US_BOUNDS } from '../usStates'
+import SiteHeader from '../modules/SiteHeader'
 
 function generateKey(point, idx) {
   return point._id || point.slug || idx
@@ -86,6 +87,8 @@ function resolveSpacedPoints(points, minDistance) {
   })
 }
 
+const HEADER_HEIGHT = 180
+
 export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navigate = useNavigate()
   const [selectedSlug, setSelectedSlug] = useState(null)
@@ -99,6 +102,16 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   }))
   const selectedPointScreenRef = useRef(null)
   const navigationTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    // Prevent body scroll for fixed 3D map viewport
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      // Restore scrolling when unmounting
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   const handleProjectUpdate = useCallback(({ x, y }) => {
     selectedPointScreenRef.current = { x, y }
@@ -202,8 +215,17 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   }
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#030303' }}>
-      <button
+    <div style={{ width: '100vw', minHeight: '100vh', background: '#030303', position: 'relative' }}>
+      <SiteHeader />
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: `calc(100vh - ${HEADER_HEIGHT}px)`,
+          marginTop: HEADER_HEIGHT,
+        }}
+      >
+        <button
         onClick={() => setShowTester(true)}
         style={{
           position: 'absolute',
@@ -220,9 +242,9 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         }}
       >
         Shader Tester
-      </button>
+        </button>
 
-      {(pointsLoading || pointsError || !isSanityConfigured) && (
+        {(pointsLoading || pointsError || !isSanityConfigured) && (
         <div
           style={{
             position: 'absolute',
@@ -245,9 +267,9 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
               ? 'Configure Sanity env vars to load live map data.'
               : 'Showing cached map data (Sanity offline)'}
         </div>
-      )}
+        )}
 
-      {selectedPoint && (
+        {selectedPoint && (
         <SelectionOverlay
           point={selectedPoint}
           screenRef={selectedPointScreenRef}
@@ -255,18 +277,14 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
           onClose={() => setSelectedSlug(null)}
           isLoading={isNavigating || Boolean(cameraTarget)}
         />
-      )}
+        )}
 
-      <Canvas>
+        <Canvas style={{ height: '100%' }}>
         <color attach="background" args={[0, 0, 0]} />
-        <PerspectiveCamera makeDefault position={[0, 400, 400]} />
-        <OrbitControls
+        <PerspectiveCamera
           makeDefault
-          enableDamping
-          dampingFactor={0.05}
-          minDistance={200}
-          maxDistance={800}
-          maxPolarAngle={Math.PI / 2}
+          position={[164.3, 221.38, 270.94]}
+          rotation={[-0.724, 0.286, 0.245]}
         />
 
         {cameraTarget && (
@@ -296,9 +314,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         </group>
 
         <gridHelper args={[1000, 20, '#333333', '#222222']} position={[0, -5, 0]} />
-      </Canvas>
+        </Canvas>
 
-      <CursorFollower active />
+        <CursorFollower active />
+      </div>
     </div>
   )
 }
@@ -351,17 +370,20 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
       return
     }
 
+    // Convert anchor from viewport coords to container coords
+    // Container is offset by HEADER_HEIGHT from viewport top
     const { x: startX, y: startY } = start
+    const containerStartY = startY - HEADER_HEIGHT
     const { x: endX, y: endY } = screenPos
     const midX = Math.max(startX + 80, endX)
 
     horizontalOne.style.left = `${startX}px`
-    horizontalOne.style.top = `${startY}px`
+    horizontalOne.style.top = `${containerStartY}px`
     horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
     horizontalOne.style.opacity = '1'
 
-    const verticalTop = Math.min(startY, endY)
-    const verticalHeight = Math.abs(endY - startY)
+    const verticalTop = Math.min(containerStartY, endY)
+    const verticalHeight = Math.abs(endY - containerStartY)
     verticalLine.style.left = `${midX}px`
     verticalLine.style.top = `${verticalTop}px`
     verticalLine.style.height = `${verticalHeight}px`

@@ -5,6 +5,7 @@ import { TextureLoader, PlaneGeometry } from 'three'
 import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
+import SiteHeader from '../modules/SiteHeader'
 
 let heroSvgStylesInjected = false
 function ensureHeroSvgStyles() {
@@ -56,6 +57,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   const [heroLineSvgMarkup, setHeroLineSvgMarkup] = useState(null)
   const [heroSvgReady, setHeroSvgReady] = useState(false)
   const [showHeroLoader, setShowHeroLoader] = useState(true)
+  const [heroLoaderRendered, setHeroLoaderRendered] = useState(true)
   const loaderStartRef = useRef(0)
   const loaderTimeoutRef = useRef(null)
   const heroLoadStartRef = useRef(0)
@@ -76,12 +78,39 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (showHeroLoader) {
+      setHeroLoaderRendered(true)
+      return undefined
+    }
+    const timer = setTimeout(() => setHeroLoaderRendered(false), 450)
+    return () => clearTimeout(timer)
+  }, [showHeroLoader])
+
   const venue = useMemo(() => {
     return mapPoints.find((point) => point.slug === slug) || null
   }, [mapPoints, slug])
 
   const heroUrl = venue?.heroImageUrl || null
   const heroLineSvgUrl = venue?.heroLineSvgUrl || null
+
+  useEffect(() => {
+    // Ensure body can scroll for venue pages
+    document.body.style.overflow = 'auto'
+
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
+  useEffect(() => {
+    // Lock scroll while loader is active
+    if (showHeroLoader) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'auto'
+    }
+  }, [showHeroLoader])
 
   useEffect(() => {
     let cancelled = false
@@ -203,18 +232,20 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
         backgroundColor: '#030303',
         color: '#fff',
         width: '100%',
-        height: '100vh',
-        overflowY: 'auto',
+        paddingTop: 180,
         position: 'relative',
       }}
     >
-      {showHeroLoader && (
+      <SiteHeader />
+      {heroLoaderRendered && (
         <div
           style={{
-            position: 'absolute',
+            position: 'fixed',
             inset: 0,
-            zIndex: 60,
+            zIndex: 250,
             background: 'rgba(3,3,3,0.95)',
+            opacity: showHeroLoader ? 1 : 0,
+            transition: 'opacity 0.45s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -242,25 +273,6 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
           </>
         )}
 
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            zIndex: 100,
-            padding: '12px 24px',
-            background: '#4a90e2',
-            border: 'none',
-            borderRadius: '8px',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          ← Back to Map
-        </button>
       </div>
 
       {venue.aboutModule && <VenueAboutModule about={venue.aboutModule} />}
