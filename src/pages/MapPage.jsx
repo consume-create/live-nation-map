@@ -215,14 +215,16 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   }
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', background: '#030303', position: 'relative' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#030303', position: 'relative', overflow: 'hidden' }}>
       <SiteHeader />
       <div
         style={{
-          position: 'relative',
-          width: '100%',
-          height: `calc(100vh - ${HEADER_HEIGHT}px)`,
-          marginTop: HEADER_HEIGHT,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingTop: HEADER_HEIGHT,
         }}
       >
         <button
