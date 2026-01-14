@@ -14,14 +14,18 @@ export default function CameraController({ targetPosition, onComplete }) {
   useEffect(() => {
     if (targetPosition) {
       // Start animation
+      console.log('[CameraController] Starting animation')
+      console.log('[CameraController] Current camera position:', camera.position.toArray())
       isAnimating.current = true
       progress.current = 0
       startPosition.current.copy(camera.position)
+      console.log('[CameraController] Captured startPosition:', startPosition.current.toArray())
       if (controls) {
         startTarget.current.copy(controls.target)
       } else {
         startTarget.current.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(50))
       }
+      console.log('[CameraController] startTarget:', startTarget.current.toArray())
       const baseOffset = startPosition.current.clone().sub(startTarget.current)
 
       const manualOffset = getVectorFromTarget(targetPosition.offset)
@@ -41,6 +45,10 @@ export default function CameraController({ targetPosition, onComplete }) {
       } else {
         targetRef.current = new THREE.Vector3(targetPosition.x, targetPosition.y, targetPosition.z)
       }
+      console.log('[CameraController] targetRef (target center):', targetRef.current.toArray())
+      console.log('[CameraController] startOffset:', startOffset.current.toArray())
+      const targetCameraPos = targetRef.current.clone().add(startOffset.current)
+      console.log('[CameraController] targetCameraPos (final position):', targetCameraPos.toArray())
     }
   }, [targetPosition, camera, controls])
 

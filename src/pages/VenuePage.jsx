@@ -580,7 +580,7 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
   )
 }
 
-function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, viewportWidth }) {
+export function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions = {}, viewportWidth }) {
   if (!logoUrl) return null
   const widthFromMeta =
     typeof logoDimensions.width === 'number' && logoDimensions.width > 0 ? logoDimensions.width : null

@@ -100,6 +100,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight,
   }))
+  const [transitionOverlayOpacity, setTransitionOverlayOpacity] = useState(0)
   const selectedPointScreenRef = useRef(null)
   const navigationTimeoutRef = useRef(null)
 
@@ -140,6 +141,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     const focusTarget = buildFocusTarget(selectedPoint)
 
     setPendingSlug(selectedPoint.slug)
+
+    // Close panel immediately to prevent line animation glitches
+    setSelectedSlug(null)
+
     if (!focusTarget) {
       setIsNavigating(true)
       if (navigationTimeoutRef.current) {
@@ -163,16 +168,25 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     }
   }, [])
 
+  useEffect(() => {
+    // Reset transition state when component unmounts
+    return () => {
+      setTransitionOverlayOpacity(0)
+    }
+  }, [])
+
   const handleCameraComplete = useCallback(() => {
     if (!pendingSlug) return
     setCameraTarget(null)
-    setIsNavigating(true)
-    if (navigationTimeoutRef.current) {
-      clearTimeout(navigationTimeoutRef.current)
-    }
-    navigationTimeoutRef.current = setTimeout(() => {
+
+    // Start fade to black (1000ms)
+    setTransitionOverlayOpacity(1)
+
+    // Wait for fade to complete, then navigate (stay black, no flashlight on map)
+    setTimeout(() => {
+      setIsNavigating(true)
       navigate(`/venue/${pendingSlug}`)
-    }, 3000)
+    }, 1000)
   }, [navigate, pendingSlug])
 
   useEffect(() => {
@@ -319,6 +333,19 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         </Canvas>
 
         <CursorFollower active />
+
+        {/* Transition Overlay - Fade to black */}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: '#000',
+            opacity: transitionOverlayOpacity,
+            transition: 'opacity 1000ms ease-in-out',
+            pointerEvents: transitionOverlayOpacity > 0 ? 'auto' : 'none',
+            zIndex: 200,
+          }}
+        />
       </div>
     </div>
   )
