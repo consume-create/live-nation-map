@@ -398,6 +398,25 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
 
   const hasAnimatedRef = useRef(false)
 
+  useEffect(() => {
+    hasAnimatedRef.current = false
+    if (h1Ref.current) {
+      h1Ref.current.style.width = '0px'
+      h1Ref.current.style.opacity = '0'
+    }
+    if (vRef.current) {
+      vRef.current.style.height = '0px'
+      vRef.current.style.opacity = '0'
+    }
+    if (h2Ref.current) {
+      h2Ref.current.style.width = '0px'
+      h2Ref.current.style.opacity = '0'
+    }
+    if (endpointRef.current) {
+      endpointRef.current.style.opacity = '0'
+    }
+  }, [point?.slug])
+
   const applyLineStyles = useCallback(() => {
     const screenPos = screenRef?.current
     const start = anchorRef.current
@@ -439,26 +458,35 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
     endpoint.style.left = `${endX - 5}px`
     endpoint.style.top = `${containerEndY - 5}px`
 
-    // Trigger animation only once
-    if (!hasAnimatedRef.current) {
-      hasAnimatedRef.current = true
+    const applyDimensions = () => {
+      horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
 
-      // Use requestAnimationFrame to ensure styles are set after initial render
-      requestAnimationFrame(() => {
-        horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
-        horizontalOne.style.opacity = '1'
+      const verticalHeight = Math.abs(containerEndY - startY)
+      verticalLine.style.height = `${verticalHeight}px`
+      verticalLine.style.opacity = verticalHeight > 0 ? '1' : '0'
 
-        const verticalHeight = Math.abs(containerEndY - startY)
-        verticalLine.style.height = `${verticalHeight}px`
-        verticalLine.style.opacity = verticalHeight > 0 ? '1' : '0'
-
-        if (horizontalTwo && horizontalTwoWidth > 0.5) {
+      if (horizontalTwo) {
+        if (horizontalTwoWidth > 0.5) {
           horizontalTwo.style.width = `${horizontalTwoWidth}px`
           horizontalTwo.style.opacity = '1'
+        } else {
+          horizontalTwo.style.opacity = '0'
         }
+      }
 
-        endpoint.style.opacity = '1'
-      })
+      endpoint.style.opacity = '1'
+    }
+
+    const ensureVisible = () => {
+      horizontalOne.style.opacity = '1'
+      applyDimensions()
+    }
+
+    if (!hasAnimatedRef.current) {
+      hasAnimatedRef.current = true
+      requestAnimationFrame(ensureVisible)
+    } else {
+      ensureVisible()
     }
   }, [screenRef])
 
