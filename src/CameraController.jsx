@@ -55,7 +55,7 @@ export default function CameraController({ targetPosition, onComplete }) {
   useFrame((state, delta) => {
     if (!isAnimating.current || !targetRef.current) return
 
-    progress.current += delta * 0.8 // Animation speed
+    progress.current += delta * 0.33 // Animation speed - slower for 3 second duration
 
     if (progress.current >= 1) {
       progress.current = 1

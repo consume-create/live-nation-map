@@ -103,6 +103,8 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const [transitionOverlayOpacity, setTransitionOverlayOpacity] = useState(0)
   const selectedPointScreenRef = useRef(null)
   const navigationTimeoutRef = useRef(null)
+  const fadeTimeoutRef = useRef(null)
+  const navTimeoutRef = useRef(null)
 
   useEffect(() => {
     // Prevent body scroll for fixed 3D map viewport
@@ -122,10 +124,9 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     if (!point || !Array.isArray(point.position)) return null
     const [px = 0, py = 0] = point.position
     const worldCenter = new Vector3(px, 12.5, -py)
-    const offset = new Vector3(0, 160, 210)
     return {
       position: worldCenter,
-      offset,
+      zoomFactor: 0.3,  // Zoom to 30% of current distance from target
     }
   }, [])
 
@@ -156,7 +157,19 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
       return
     }
 
+    // Start camera animation
     setCameraTarget(focusTarget)
+
+    // Start fade to black at 2 seconds (while camera is still moving)
+    fadeTimeoutRef.current = setTimeout(() => {
+      setTransitionOverlayOpacity(1)
+
+      // Navigate 1 second later (when fade completes at 3 seconds total)
+      navTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(true)
+        navigate(`/venue/${selectedPoint.slug}`)
+      }, 1000)
+    }, 2000)
   }
 
   useEffect(() => {
@@ -164,6 +177,14 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
       if (navigationTimeoutRef.current) {
         clearTimeout(navigationTimeoutRef.current)
         navigationTimeoutRef.current = null
+      }
+      if (fadeTimeoutRef.current) {
+        clearTimeout(fadeTimeoutRef.current)
+        fadeTimeoutRef.current = null
+      }
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current)
+        navTimeoutRef.current = null
       }
     }
   }, [])
@@ -176,18 +197,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   }, [])
 
   const handleCameraComplete = useCallback(() => {
-    if (!pendingSlug) return
+    // Camera completes but we don't use this for navigation anymore
+    // Navigation is triggered by timers in handleSeeMore
     setCameraTarget(null)
-
-    // Start fade to black (1000ms)
-    setTransitionOverlayOpacity(1)
-
-    // Wait for fade to complete, then navigate (stay black, no flashlight on map)
-    setTimeout(() => {
-      setIsNavigating(true)
-      navigate(`/venue/${pendingSlug}`)
-    }, 1000)
-  }, [navigate, pendingSlug])
+  }, [])
 
   useEffect(() => {
     if (!isNavigating) {
