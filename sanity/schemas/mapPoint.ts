@@ -162,7 +162,7 @@ export default defineType({
           },
         }),
       ],
-      validation: (rule) => rule.max(5),
+      validation: (rule) => rule.max(12),
     }),
     defineField({
       name: 'aboutModule',

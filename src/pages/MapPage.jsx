@@ -356,6 +356,8 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
   const upperName = point?.title?.toUpperCase?.() ?? ''
   const subtitle = point?.state ? point.state.toUpperCase() : 'UNITED STATES'
 
+  const hasAnimatedRef = useRef(false)
+
   const applyLineStyles = useCallback(() => {
     const screenPos = screenRef?.current
     const start = anchorRef.current
@@ -369,44 +371,55 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
       if (verticalLine) verticalLine.style.opacity = '0'
       if (horizontalTwo) horizontalTwo.style.opacity = '0'
       if (endpoint) endpoint.style.opacity = '0'
+      hasAnimatedRef.current = false
       return
     }
 
-    // Convert anchor from viewport coords to container coords
-    // Container is offset by HEADER_HEIGHT from viewport top
+    // Anchor is in viewport coords, MapPoint is in Canvas coords (needs offset for paddingTop)
     const { x: startX, y: startY } = start
-    const containerStartY = startY - HEADER_HEIGHT
     const { x: endX, y: endY } = screenPos
+    const containerEndY = endY + HEADER_HEIGHT // Add padding offset to Canvas coords
     const midX = Math.max(startX + 80, endX)
 
+    // Set positions (these don't animate)
     horizontalOne.style.left = `${startX}px`
-    horizontalOne.style.top = `${containerStartY}px`
-    horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
-    horizontalOne.style.opacity = '1'
+    horizontalOne.style.top = `${startY}px`
 
-    const verticalTop = Math.min(containerStartY, endY)
-    const verticalHeight = Math.abs(endY - containerStartY)
+    const verticalTop = Math.min(startY, containerEndY)
     verticalLine.style.left = `${midX}px`
     verticalLine.style.top = `${verticalTop}px`
-    verticalLine.style.height = `${verticalHeight}px`
-    verticalLine.style.opacity = verticalHeight > 0 ? '1' : '0'
 
-    if (horizontalTwo) {
-      const horizontalTwoWidth = Math.abs(endX - midX)
-      const horizontalTwoLeft = Math.min(endX, midX)
-      if (horizontalTwoWidth > 0.5) {
-        horizontalTwo.style.left = `${horizontalTwoLeft}px`
-        horizontalTwo.style.top = `${endY}px`
-        horizontalTwo.style.width = `${horizontalTwoWidth}px`
-        horizontalTwo.style.opacity = '1'
-      } else {
-        horizontalTwo.style.opacity = '0'
-      }
+    const horizontalTwoWidth = Math.abs(endX - midX)
+    const horizontalTwoLeft = Math.min(endX, midX)
+    if (horizontalTwo && horizontalTwoWidth > 0.5) {
+      horizontalTwo.style.left = `${horizontalTwoLeft}px`
+      horizontalTwo.style.top = `${containerEndY}px`
     }
 
     endpoint.style.left = `${endX - 5}px`
-    endpoint.style.top = `${endY - 5}px`
-    endpoint.style.opacity = '1'
+    endpoint.style.top = `${containerEndY - 5}px`
+
+    // Trigger animation only once
+    if (!hasAnimatedRef.current) {
+      hasAnimatedRef.current = true
+
+      // Use requestAnimationFrame to ensure styles are set after initial render
+      requestAnimationFrame(() => {
+        horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
+        horizontalOne.style.opacity = '1'
+
+        const verticalHeight = Math.abs(containerEndY - startY)
+        verticalLine.style.height = `${verticalHeight}px`
+        verticalLine.style.opacity = verticalHeight > 0 ? '1' : '0'
+
+        if (horizontalTwo && horizontalTwoWidth > 0.5) {
+          horizontalTwo.style.width = `${horizontalTwoWidth}px`
+          horizontalTwo.style.opacity = '1'
+        }
+
+        endpoint.style.opacity = '1'
+      })
+    }
   }, [screenRef])
 
   useEffect(() => {
@@ -425,7 +438,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
         ref={cardRef}
         style={{
           position: 'absolute',
-          top: '60px',
+          bottom: '60px',
           left: '60px',
           background: '#f7f7f7',
           color: '#111',
@@ -499,6 +512,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           pointerEvents: 'none',
           borderTop: '2px dashed rgba(255,255,255,0.7)',
           opacity: 0,
+          transition: 'opacity 0.4s ease-out, width 0.4s ease-out',
         }}
       />
       <div
@@ -509,6 +523,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           pointerEvents: 'none',
           borderLeft: '2px dashed rgba(255,255,255,0.7)',
           opacity: 0,
+          transition: 'opacity 0.4s ease-out 0.1s, height 0.4s ease-out 0.1s',
         }}
       />
       <div
@@ -519,6 +534,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           pointerEvents: 'none',
           borderTop: '2px dashed rgba(255,255,255,0.7)',
           opacity: 0,
+          transition: 'opacity 0.4s ease-out 0.2s, width 0.4s ease-out 0.2s',
         }}
       />
       <div
@@ -533,6 +549,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           zIndex: 111,
           pointerEvents: 'none',
           opacity: 0,
+          transition: 'opacity 0.4s ease-out 0.3s',
         }}
       />
     </>
