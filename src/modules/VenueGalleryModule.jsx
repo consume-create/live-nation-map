@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 const DEFAULT_IMAGE_ASPECT = 4 / 3
+const BAND_HEIGHT = 600 // pixels per band for overflow images
+const LABEL_HEIGHT = 32 // approximate height for label + margin
+
 const CARD_VARIATIONS = [
   { justify: 'flex-start', translateX: '-6%', translateY: '-8%' },
   { justify: 'center', translateX: '4%', translateY: '-10%' },
@@ -11,14 +14,18 @@ const CARD_VARIATIONS = [
   { justify: 'center', translateX: '0%', translateY: '-4%' },
 ]
 
+// Pixel-based positions - rows spaced 600px apart
 const ABSOLUTE_LAYOUTS = [
-  { topVh: 0, left: '5%', width: '28%' },
-  { topVh: 18, left: '40%', width: '20%' },
-  { topVh: 30, left: '68%', width: '20%' },
-  { topVh: 52, left: '12%', width: '30%' },
-  { topVh: 68, left: '52%', width: '24%' },
-  { topVh: 92, left: '8%', width: '36%' },
-  { topVh: 118, left: '38%', width: '38%' },
+  // Row 1 (top ~0)
+  { top: 0, left: '2%', width: '28%' },      // left
+  { top: 0, left: '36%', width: '20%' },     // center
+  { top: 0, left: '62%', width: '24%' },     // right
+  // Row 2 (top ~600)
+  { top: 600, left: '5%', width: '24%' },    // left
+  { top: 640, left: '42%', width: '28%' },   // right
+  // Row 3 (top ~1200)
+  { top: 1200, left: '50%', width: '32%' },  // right
+  { top: 1280, left: '8%', width: '30%' },   // left
 ]
 
 function getAspectRatio(item) {
@@ -50,9 +57,37 @@ export default function VenueGalleryModule({ images = [] }) {
   const columnGap = isCompact ? 'clamp(32px, 6vw, 80px)' : 'clamp(120px, 8vw, 220px)'
   const rowGap = isCompact ? 64 : 220
   const useAbsoluteLayout = !isCompact
-  const bandCount = useAbsoluteLayout
-    ? Math.max(1, Math.ceil(clampedImages.length / ABSOLUTE_LAYOUTS.length))
-    : 0
+
+  // Calculate dynamic container height based on actual image positions
+  const containerHeight = useMemo(() => {
+    if (!useAbsoluteLayout || !clampedImages.length) return 0
+
+    // Estimate container width (maxWidth is 1800px, minus padding)
+    const estimatedContainerWidth = Math.min(viewportWidth - 280, 1800)
+    let maxBottom = 0
+
+    clampedImages.forEach((item, idx) => {
+      const slotIndex = idx % ABSOLUTE_LAYOUTS.length
+      const band = Math.floor(idx / ABSOLUTE_LAYOUTS.length)
+      const layout = ABSOLUTE_LAYOUTS[slotIndex]
+      const aspectRatio = getAspectRatio(item)
+
+      // Calculate top position
+      const top = layout.top + band * BAND_HEIGHT
+
+      // Estimate image height based on width percentage and aspect ratio
+      const widthPercent = parseFloat(layout.width) / 100
+      const imageWidth = estimatedContainerWidth * widthPercent
+      const imageHeight = imageWidth / aspectRatio
+
+      // Account for label height
+      const totalHeight = imageHeight + LABEL_HEIGHT
+
+      maxBottom = Math.max(maxBottom, top + totalHeight)
+    })
+
+    return maxBottom + 80 // Add bottom padding
+  }, [clampedImages, useAbsoluteLayout, viewportWidth])
 
   return (
     <section
@@ -77,7 +112,7 @@ export default function VenueGalleryModule({ images = [] }) {
             useAbsoluteLayout
               ? {
                   position: 'relative',
-                  minHeight: `${Math.max(100, bandCount * 120)}vh`,
+                  height: `${containerHeight}px`,
                   width: '100%',
                 }
               : {
@@ -100,7 +135,7 @@ export default function VenueGalleryModule({ images = [] }) {
             const verticalBand = Math.floor(idx / ABSOLUTE_LAYOUTS.length)
             const absoluteSlot = ABSOLUTE_LAYOUTS[slotIndex] || {}
             const topOffset = useAbsoluteLayout
-              ? `${(absoluteSlot.topVh || 0) + verticalBand * 120}vh`
+              ? `${(absoluteSlot.top || 0) + verticalBand * BAND_HEIGHT}px`
               : undefined
 
             return (
