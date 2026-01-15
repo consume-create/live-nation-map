@@ -30,9 +30,9 @@ export default function USMap() {
   }, [])
 
   const extrudeSettings = {
-    depth: 3,
+    depth: 4,
     bevelEnabled: true,
-    bevelThickness: 0.1,
+    bevelThickness: 0.2,
     bevelSize: 0.2,
     bevelSegments: 3,
   }
@@ -52,7 +52,7 @@ function StateMesh({ shape, feature, settings }) {
   const [topMaterial, bottomMaterial, sideMaterial] = useMemo(() => {
     const top = new THREE.MeshStandardMaterial({
       color: '#000000',
-      roughness: 0.35,
+      roughness: 0.7,
       metalness: 0.1,
       polygonOffset: true,
       polygonOffsetFactor: -1,
@@ -64,9 +64,11 @@ function StateMesh({ shape, feature, settings }) {
       metalness: 0.05
     })
     const side = new THREE.MeshStandardMaterial({
-      color: feature.properties.value > 0 ? '#ffffff' : '#040404',
-      roughness: 0.8,
-      metalness: 0.05
+      color: '#ffffff',
+      emissive: '#ffffff',
+      emissiveIntensity: 0.3,
+      roughness: 0.5,
+      metalness: 0.0
     })
     return [top, bottom, side]
   }, [feature])

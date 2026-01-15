@@ -96,6 +96,8 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [cameraTarget, setCameraTarget] = useState(null)
   const [pendingSlug, setPendingSlug] = useState(null)
+  const [showSplash, setShowSplash] = useState(true)
+  const [splashOpacity, setSplashOpacity] = useState(0)
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight,
@@ -105,6 +107,29 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navigationTimeoutRef = useRef(null)
   const fadeTimeoutRef = useRef(null)
   const navTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    // Fade in immediately
+    const fadeInTimer = setTimeout(() => {
+      setSplashOpacity(1)
+    }, 50)
+
+    // Start fade out after 2 seconds
+    const fadeOutTimer = setTimeout(() => {
+      setSplashOpacity(0)
+    }, 2000)
+
+    // Remove splash after fade out completes
+    const hideTimer = setTimeout(() => {
+      setShowSplash(false)
+    }, 2600)
+
+    return () => {
+      clearTimeout(fadeInTimer)
+      clearTimeout(fadeOutTimer)
+      clearTimeout(hideTimer)
+    }
+  }, [])
 
   useEffect(() => {
     // Prevent body scroll for fixed 3D map viewport
@@ -239,6 +264,34 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
 
   if (showTester) {
     return <ShaderTester onExit={() => setShowTester(false)} />
+  }
+
+  if (showSplash) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: '#ffffff',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'flex-start',
+          zIndex: 9999,
+          opacity: splashOpacity,
+          transition: 'opacity 500ms ease-in-out',
+        }}
+      >
+        <img
+          src="/images/live-nation-logo.svg"
+          alt="Live Nation"
+          style={{
+            width: 'calc(100% - 40px)',
+            height: 'auto',
+            margin: '20px',
+          }}
+        />
+      </div>
+    )
   }
 
   return (
