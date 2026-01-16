@@ -10,6 +10,7 @@ import { isSanityConfigured } from '../lib/sanityClient'
 import CameraController from '../CameraController'
 import { US_BOUNDS } from '../usStates'
 import SiteHeader from '../modules/SiteHeader'
+import MobileMapView from '../components/MobileMapView'
 
 function generateKey(point, idx) {
   return point._id || point.slug || idx
@@ -131,15 +132,22 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     }
   }, [])
 
+  // Tablet breakpoint for responsive swap
+  const isMobile = viewport.width < 768
+
   useEffect(() => {
-    // Prevent body scroll for fixed 3D map viewport
-    document.body.style.overflow = 'hidden'
+    // Prevent body scroll for fixed 3D map viewport (desktop only)
+    if (!isMobile) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
 
     return () => {
       // Restore scrolling when unmounting
       document.body.style.overflow = ''
     }
-  }, [])
+  }, [isMobile])
 
   const handleProjectUpdate = useCallback(({ x, y }) => {
     selectedPointScreenRef.current = { x, y }
@@ -294,6 +302,12 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     )
   }
 
+  // Mobile view with static map and accordions
+  if (isMobile) {
+    return <MobileMapView mapPoints={mapPoints} />
+  }
+
+  // Desktop 3D view
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#030303', position: 'relative', overflow: 'hidden' }}>
       <SiteHeader />

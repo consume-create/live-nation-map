@@ -311,7 +311,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
 
   const heroStyle = {
     width: '100%',
-    minHeight: '100vh',
+    minHeight: viewportWidth < 768 ? 'auto' : '100vh',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
@@ -327,13 +327,14 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     paddingBottom: '60px',
   }
 
+  const isMobile = viewportWidth < 768
   const heroArtStageStyle = {
     position: 'relative',
     width: '100vw',
     maxWidth: '100vw',
     marginLeft: 'calc(50% - 50vw)',
     aspectRatio: '1920 / 1080',
-    minHeight: '60vh',
+    minHeight: isMobile ? 'auto' : '60vh',
     overflow: 'hidden',
     opacity: heroVisible ? 1 : 0,
     transition: `opacity ${HERO_REVEAL_FADE_MS}ms ease`,

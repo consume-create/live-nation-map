@@ -80,6 +80,24 @@ export default defineType({
       },
     }),
     defineField({
+      name: 'city',
+      title: 'City',
+      type: 'string',
+    }),
+    defineField({
+      name: 'region',
+      title: 'Region',
+      type: 'string',
+      options: {
+        list: [
+          { title: 'West', value: 'west' },
+          { title: 'Central', value: 'central' },
+          { title: 'East', value: 'east' },
+        ],
+      },
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
       name: 'location',
       title: 'Map Location',
       type: 'geopoint',
