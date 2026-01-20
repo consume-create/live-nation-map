@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { COLORS, ANIMATIONS } from '../constants/theme'
 
 export default function RegionAccordion({ title, venues = [] }) {
   const [isOpen, setIsOpen] = useState(false)
   const contentRef = useRef(null)
   const [contentHeight, setContentHeight] = useState(0)
   const navigate = useNavigate()
+  const contentId = `region-content-${title.toLowerCase()}`
 
   useEffect(() => {
     if (contentRef.current) {
@@ -18,10 +20,13 @@ export default function RegionAccordion({ title, venues = [] }) {
   }
 
   return (
-    <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.3)' }}>
+    <div style={{ borderBottom: `1px solid ${COLORS.BORDER_WHITE_30}` }}>
       {/* Accordion Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={contentId}
+        aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${title} region venues`}
         style={{
           width: '100%',
           display: 'flex',
@@ -35,7 +40,7 @@ export default function RegionAccordion({ title, venues = [] }) {
       >
         <span
           style={{
-            color: '#fff',
+            color: COLORS.TEXT_WHITE,
             fontSize: '16px',
             fontWeight: 600,
             letterSpacing: '0.1em',
@@ -46,22 +51,26 @@ export default function RegionAccordion({ title, venues = [] }) {
         </span>
         <img
           src="/images/plus-button.svg"
-          alt={isOpen ? 'Collapse' : 'Expand'}
+          alt=""
+          aria-hidden="true"
           style={{
             width: '25px',
             height: '25px',
             transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
-            transition: 'transform 0.3s ease',
+            transition: `transform ${ANIMATIONS.STANDARD} ease`,
           }}
         />
       </button>
 
       {/* Accordion Content */}
       <div
+        id={contentId}
+        role="region"
+        aria-labelledby={`region-header-${title.toLowerCase()}`}
         style={{
           height: isOpen ? `${contentHeight}px` : '0px',
           overflow: 'hidden',
-          transition: 'height 0.3s ease',
+          transition: `height ${ANIMATIONS.STANDARD} ease`,
         }}
       >
         <div ref={contentRef}>
@@ -69,6 +78,7 @@ export default function RegionAccordion({ title, venues = [] }) {
             <button
               key={venue._id || venue.slug}
               onClick={() => handleVenueClick(venue.slug)}
+              aria-label={`View ${venue.title} venue in ${venue.city || venue.state}`}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -77,7 +87,7 @@ export default function RegionAccordion({ title, venues = [] }) {
                 padding: '20px 0',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                borderBottom: `1px solid ${COLORS.BORDER_WHITE_15}`,
                 cursor: 'pointer',
                 textAlign: 'left',
               }}
@@ -86,6 +96,7 @@ export default function RegionAccordion({ title, venues = [] }) {
               <img
                 src="/images/ln-arrow.svg"
                 alt=""
+                aria-hidden="true"
                 style={{
                   width: '20px',
                   height: '20px',
@@ -96,7 +107,7 @@ export default function RegionAccordion({ title, venues = [] }) {
               <div>
                 <div
                   style={{
-                    color: '#fff',
+                    color: COLORS.TEXT_WHITE,
                     fontSize: '16px',
                     fontWeight: 700,
                     letterSpacing: '0.05em',
@@ -108,7 +119,7 @@ export default function RegionAccordion({ title, venues = [] }) {
                 </div>
                 <div
                   style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: COLORS.TEXT_WHITE_70,
                     fontSize: '12px',
                     letterSpacing: '0.1em',
                     textTransform: 'uppercase',

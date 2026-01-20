@@ -1,11 +1,13 @@
 import { Suspense, useMemo, useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { TextureLoader, PlaneGeometry } from 'three'
 import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
 import SiteHeader from '../modules/SiteHeader'
+import { useViewportWidth } from '../hooks/useViewportWidth'
+import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS } from '../constants/theme'
 
 let heroSvgStylesInjected = false
 function ensureHeroSvgStyles() {
@@ -95,10 +97,7 @@ const HERO_REVEAL_SLIDE_MS = 0
 
 export default function VenuePage({ mapPoints, pointsLoading }) {
   const { slug } = useParams()
-  const navigate = useNavigate()
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1440 : window.innerWidth
-  )
+  const viewportWidth = useViewportWidth()
   const [heroSvgMarkup, setHeroSvgMarkup] = useState(null)
   const [heroLineSvgMarkup, setHeroLineSvgMarkup] = useState(null)
   const [heroArtReady, setHeroArtReady] = useState(false)
@@ -110,13 +109,6 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   const loaderStartRef = useRef(0)
   const loaderTimeoutRef = useRef(null)
   const heroLoadStartRef = useRef(0)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    const handleResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -139,6 +131,16 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   const venue = useMemo(() => {
     return mapPoints.find((point) => point.slug === slug) || null
   }, [mapPoints, slug])
+
+  // Dynamic page title for SEO
+  useEffect(() => {
+    if (venue?.title) {
+      document.title = `${venue.title} | Live Nation`
+    }
+    return () => {
+      document.title = 'Live Nation Venue Map'
+    }
+  }, [venue?.title])
 
   const heroUrl = venue?.heroImageUrl || null
   const heroLineSvgUrl = venue?.heroLineSvgUrl || null
@@ -184,9 +186,6 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
 
     loaderStartRef.current = Date.now()
     heroLoadStartRef.current = loaderStartRef.current
-    console.log(
-      `[VenuePage] Hero loader shown for "${slug}" at ${new Date(loaderStartRef.current).toISOString()}`
-    )
     setShowHeroLoader(true)
 
     function scheduleLoaderHide(reason) {
@@ -198,9 +197,6 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
         if (cancelled) return
         setShowHeroLoader(false)
         setHeroVisible(false)
-        console.log(
-          `[VenuePage] Loader hidden (${reason}) after ${Date.now() - loaderStartRef.current}ms for "${slug}"`
-        )
       }
       if (remaining === 0) {
         hide()
@@ -246,20 +242,15 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
           if (!heroLoaderRendered && hasLineMarkup) {
             setAllowLineAnimation(true)
           }
-          const loadDuration = Date.now() - heroLoadStartRef.current
-          console.log(`[VenuePage] Hero assets ready for "${slug}" in ${loadDuration}ms`)
           scheduleLoaderHide('hero art ready')
         }
       } catch (error) {
-        console.warn('Failed to load hero SVG', error)
         if (!cancelled) {
           setHeroSvgMarkup(null)
           setHeroLineSvgMarkup(null)
           setHeroArtReady(false)
           setHeroLineReady(false)
           setAllowLineAnimation(false)
-          const failDuration = Date.now() - heroLoadStartRef.current
-          console.log(`[VenuePage] Hero asset load failed for "${slug}" after ${failDuration}ms`)
           scheduleLoaderHide('hero art failed')
         }
       }
@@ -278,44 +269,34 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   useEffect(() => {
     let fadeTimer = null
     if (!heroLoaderRendered) {
-      console.log(
-        `[VenuePage] Loader unmounted for "${slug}", scheduling hero visible in ${HERO_REVEAL_FADE_MS}ms at ${Date.now()}`
-      )
       fadeTimer = setTimeout(() => {
-        console.log(
-          `[VenuePage] Setting heroVisible=true for "${slug}" at ${Date.now()}, elapsed from page load: ${Date.now() - loaderStartRef.current}ms`
-        )
         setHeroVisible(true)
       }, HERO_REVEAL_FADE_MS)
     }
     return () => {
       if (fadeTimer) clearTimeout(fadeTimer)
     }
-  }, [heroLoaderRendered, slug])
+  }, [heroLoaderRendered])
 
   useEffect(() => {
     if (!heroVisible || !heroLineReady) return undefined
-    console.log(
-      `[VenuePage] heroVisible=true and heroLineReady=true for "${slug}", scheduling allowLineAnimation in ${HERO_REVEAL_SLIDE_MS}ms at ${Date.now()}`
-    )
     const slideTimer = setTimeout(() => {
-      console.log(
-        `[VenuePage] Setting allowLineAnimation=true for "${slug}" at ${Date.now()}, elapsed from page load: ${Date.now() - loaderStartRef.current}ms`
-      )
       setAllowLineAnimation(true)
     }, HERO_REVEAL_SLIDE_MS)
     return () => clearTimeout(slideTimer)
-  }, [heroVisible, heroLineReady, slug])
+  }, [heroVisible, heroLineReady])
 
   if (!venue) return null
 
+  const isMobile = viewportWidth < BREAKPOINTS.MOBILE
+
   const heroStyle = {
     width: '100%',
-    minHeight: viewportWidth < 768 ? 'auto' : '100vh',
+    minHeight: isMobile ? 'auto' : '100vh',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    backgroundColor: '#030303',
+    backgroundColor: COLORS.BACKGROUND_DARK,
     backgroundImage:
       heroUrl && !heroArtReady
         ? `linear-gradient(120deg, rgba(0,0,0,0.75), rgba(0,0,0,0.35)), url(${heroUrl})`
@@ -327,7 +308,6 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     paddingBottom: '60px',
   }
 
-  const isMobile = viewportWidth < 768
   const heroArtStageStyle = {
     position: 'relative',
     width: '100vw',
@@ -341,10 +321,10 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
   }
 
   return (
-    <div
+    <main
       style={{
-        backgroundColor: '#030303',
-        color: '#fff',
+        backgroundColor: COLORS.BACKGROUND_DARK,
+        color: COLORS.TEXT_WHITE,
         width: '100%',
         paddingTop: 180,
         position: 'relative',
@@ -352,12 +332,15 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       }}
     >
       <SiteHeader />
+
+      <h1 className="sr-only">{venue.title}</h1>
+
       {heroLoaderRendered && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 250,
+            zIndex: Z_INDEX.VENUE_LOADER,
             background: 'rgba(3,3,3,0.95)',
             opacity: showHeroLoader ? 1 : 0,
             transition: 'opacity 0.45s ease',
@@ -398,7 +381,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       {venue.gallery && venue.gallery.length > 0 && (
         <VenueGalleryModule images={venue.gallery} />
       )}
-    </div>
+    </main>
   )
 }
 
@@ -488,18 +471,10 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
       svg.removeAttribute('data-hero-line-state')
       return undefined
     }
-    if (venueSlug) {
-      console.log(
-        `[VenuePage] shouldAnimate=true, initializing hero line animation for "${venueSlug}" at ${Date.now()}`
-      )
-    } else {
-      console.log(`[VenuePage] shouldAnimate=true, initializing hero line animation at ${Date.now()}`)
-    }
 
     const drawables = Array.from(svg.querySelectorAll('path, line, polyline, polygon'))
 
     if (drawables.length === 0) {
-      console.warn('[VenuePage] No drawable SVG elements found for hero line animation')
       svg.setAttribute('data-hero-line-state', 'empty')
       return () => {
         svg.removeAttribute('data-hero-line-state')
@@ -530,9 +505,6 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
     const delayStep = accelerate ? 0.003 : 0.006
 
     const beginAnimation = () => {
-      console.log(
-        `[VenuePage] beginAnimation() called for "${venueSlug}" at ${Date.now()}, applying CSS animations to ${drawables.length} elements`
-      )
       if (reduceMotion) {
         svg.setAttribute('data-hero-line-state', 'static')
         drawables.forEach((el) => {
@@ -550,9 +522,6 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
         el.style.animation = `hero-svg-draw ${duration}s ease-out forwards`
         el.style.animationDelay = `${idx * delayStep}s`
       })
-      console.log(
-        `[VenuePage] CSS animations applied for "${venueSlug}", first element will start immediately, last element starts in ${(drawables.length - 1) * delayStep}s`
-      )
     }
 
     rafStart = requestAnimationFrame(beginAnimation)

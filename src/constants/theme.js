@@ -1,0 +1,71 @@
+// Global theme constants for Live Nation Map
+
+// Colors
+export const COLORS = {
+  BACKGROUND_DARK: '#030303',
+  BACKGROUND_ALT: '#050505',
+  TEXT_WHITE: '#fff',
+  TEXT_WHITE_70: 'rgba(255, 255, 255, 0.7)',
+  TEXT_WHITE_85: 'rgba(255, 255, 255, 0.85)',
+  ACCENT_RED: '#ff2b2b',
+  ACCENT_RED_LIGHT: '#ff6b6b',
+  GRID_RED: 'rgba(200, 0, 0, 0.12)',
+  BORDER_WHITE_30: 'rgba(255, 255, 255, 0.3)',
+  BORDER_WHITE_15: 'rgba(255, 255, 255, 0.15)',
+  BORDER_WHITE_08: 'rgba(255, 255, 255, 0.08)',
+  OVERLAY_DARK_65: 'rgba(0, 0, 0, 0.65)',
+  OVERLAY_DARK_45: 'rgba(0, 0, 0, 0.45)',
+}
+
+// Breakpoints (in pixels)
+export const BREAKPOINTS = {
+  MOBILE: 768,
+  TABLET: 900,
+  DESKTOP: 1024,
+  DEFAULT_WIDTH: 1440,
+}
+
+// Z-Index layers
+export const Z_INDEX = {
+  CURSOR: 90,
+  LINE_DRAWING: 110,
+  LINE_ENDPOINT: 111,
+  SHADER_BUTTON: 120,
+  SELECTION_OVERLAY: 130,
+  HEADER: 200,
+  SHADER_PANEL: 210,
+  VENUE_LOADER: 250,
+  SPLASH: 9999,
+}
+
+// Animation durations
+export const ANIMATIONS = {
+  QUICK: '0.2s',
+  STANDARD: '0.3s',
+  SLOW: '0.4s',
+  LOADER_FADE: '0.45s',
+  MS_500: 500,
+  MS_1000: 1000,
+  MS_2000: 2000,
+  SPLASH_DURATION: 2000,
+  SPLASH_REMOVAL: 2600,
+}
+
+// Common spacing values (in pixels)
+export const SPACING = {
+  XS: 16,
+  SM: 20,
+  MD: 32,
+  LG: 48,
+  XL: 80,
+  HEADER_HEIGHT: 180,
+}
+
+// Grid background pattern helper
+export const GRID_BACKGROUND = {
+  image: `
+    linear-gradient(${COLORS.GRID_RED} 1px, transparent 1px),
+    linear-gradient(90deg, ${COLORS.GRID_RED} 1px, transparent 1px)
+  `,
+  size: '40px 40px',
+}

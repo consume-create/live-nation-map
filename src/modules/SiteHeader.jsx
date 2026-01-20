@@ -1,25 +1,17 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useScrollDirection from '../hooks/useScrollDirection'
+import { useViewportWidth } from '../hooks/useViewportWidth'
+import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS } from '../constants/theme'
 import headerIconLeft from '../assets/header-icon-left.svg'
 import headerIconCenter from '../assets/header-icon-center.svg'
 import headerIconRight from '../assets/header-icon-right.svg'
 
 export default function SiteHeader() {
   const navigate = useNavigate()
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1440 : window.innerWidth
-  )
+  const viewportWidth = useViewportWidth()
   const scrollDirection = useScrollDirection(40)
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    const handleResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const isMobile = viewportWidth < 768
+  const isMobile = viewportWidth < BREAKPOINTS.MOBILE
   const hidden = scrollDirection === 'down'
 
   return (
@@ -31,22 +23,23 @@ export default function SiteHeader() {
         position: 'fixed',
         top: hidden ? '-200px' : 0,
         left: 0,
-        zIndex: 200,
-        transition: 'top 0.4s ease',
+        zIndex: Z_INDEX.HEADER,
+        transition: `top ${ANIMATIONS.SLOW} ease`,
       }}
     >
-      <div
+      <nav
+        aria-label="Main navigation"
         style={{
           width: '100%',
-          backgroundColor: '#050505',
+          backgroundColor: COLORS.BACKGROUND_ALT,
           backgroundImage: `
             linear-gradient(rgba(120,0,0,0.18) 1px, transparent 1px),
             linear-gradient(90deg, rgba(120,0,0,0.18) 1px, transparent 1px)
           `,
           backgroundSize: '80px 80px',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          borderLeft: '1px solid rgba(255,255,255,0.08)',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
+          borderTop: `1px solid ${COLORS.BORDER_WHITE_08}`,
+          borderLeft: `1px solid ${COLORS.BORDER_WHITE_08}`,
+          borderRight: `1px solid ${COLORS.BORDER_WHITE_08}`,
         }}
       >
         <div
@@ -73,7 +66,7 @@ export default function SiteHeader() {
               }}
               aria-label="Back to map"
             >
-              <img src={headerIconLeft} alt="" style={{ width: 64, height: 64 }} />
+              <img src={headerIconLeft} alt="Live Nation logo" style={{ width: 64, height: 64 }} />
             </button>
             <div>
               <p
@@ -93,6 +86,7 @@ export default function SiteHeader() {
                   fontSize: 12,
                   fontWeight: 700,
                   textTransform: 'uppercase',
+                  color: COLORS.TEXT_WHITE,
                 }}
               >
                 2 Years 30+ Venues
@@ -109,19 +103,19 @@ export default function SiteHeader() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, flex: 1, color: COLORS.TEXT_WHITE }}>
                   We worked with over 50+ clients, venue managers and owners, to create over 20+ venue stories,
                   re-brands and more.
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <img src={headerIconCenter} alt="" style={{ width: 36, height: 36 }} />
-                  <img src={headerIconRight} alt="" style={{ width: 36, height: 36 }} />
+                  <img src={headerIconCenter} alt="Consume and Create logo" style={{ width: 36, height: 36 }} />
+                  <img src={headerIconRight} alt="Productions badge" style={{ width: 36, height: 36 }} />
                 </div>
               </div>
             </>
           )}
         </div>
-      </div>
+      </nav>
     </header>
   )
 }

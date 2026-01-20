@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import SiteHeader from '../modules/SiteHeader'
 import RegionAccordion from './RegionAccordion'
+import { COLORS, GRID_BACKGROUND } from '../constants/theme'
 
 export default function MobileMapView({ mapPoints = [] }) {
   // Group venues by region
@@ -24,24 +25,37 @@ export default function MobileMapView({ mapPoints = [] }) {
   }, [mapPoints])
 
   return (
-    <div
+    <main
       style={{
         minHeight: '100vh',
-        background: '#030303',
-        backgroundImage: `
-          linear-gradient(rgba(200, 0, 0, 0.12) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(200, 0, 0, 0.12) 1px, transparent 1px)
-        `,
-        backgroundSize: '40px 40px',
+        background: COLORS.BACKGROUND_DARK,
+        backgroundImage: GRID_BACKGROUND.image,
+        backgroundSize: GRID_BACKGROUND.size,
       }}
     >
       <SiteHeader />
+
+      <h1
+        style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          padding: 0,
+          margin: '-1px',
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      >
+        Live Nation Venue Map
+      </h1>
 
       {/* Static map image */}
       <div style={{ width: '100%', padding: '20px 20px 40px', paddingTop: '120px' }}>
         <img
           src="/images/mobile-map.png"
-          alt="US Map"
+          alt="Interactive map of Live Nation venues across the United States"
           style={{
             width: '100%',
             height: 'auto',
@@ -56,6 +70,6 @@ export default function MobileMapView({ mapPoints = [] }) {
         <RegionAccordion title="CENTRAL" venues={grouped.central} />
         <RegionAccordion title="EAST" venues={grouped.east} />
       </div>
-    </div>
+    </main>
   )
 }
