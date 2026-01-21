@@ -59,7 +59,7 @@ function StateMesh({ shape, feature, settings }) {
       polygonOffsetUnits: -1
     })
     const bottom = new THREE.MeshStandardMaterial({
-      color: '#050505',
+      color: '#000000',
       roughness: 0.75,
       metalness: 0.05
     })

@@ -32,11 +32,6 @@ export default function SiteHeader() {
         style={{
           width: '100%',
           backgroundColor: COLORS.BACKGROUND_ALT,
-          backgroundImage: `
-            linear-gradient(rgba(120,0,0,0.18) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(120,0,0,0.18) 1px, transparent 1px)
-          `,
-          backgroundSize: '80px 80px',
           borderTop: `1px solid ${COLORS.BORDER_WHITE_08}`,
           borderLeft: `1px solid ${COLORS.BORDER_WHITE_08}`,
           borderRight: `1px solid ${COLORS.BORDER_WHITE_08}`,

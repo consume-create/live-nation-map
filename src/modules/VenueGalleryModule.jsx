@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 
 const DEFAULT_IMAGE_ASPECT = 4 / 3
-const BAND_HEIGHT = 600 // pixels per band for overflow images
 const LABEL_HEIGHT = 32 // approximate height for label + margin
 
 const CARD_VARIATIONS = [
@@ -14,18 +13,37 @@ const CARD_VARIATIONS = [
   { justify: 'center', translateX: '0%', translateY: '-4%' },
 ]
 
-// Pixel-based positions - rows spaced 600px apart
+// Mobile layout variations - staggered widths and positions
+const MOBILE_LAYOUTS = [
+  { width: '55%', align: 'flex-start', labelPosition: 'left' },   // left aligned, label on left
+  { width: '50%', align: 'flex-end', labelPosition: 'right' },    // right aligned, label on right
+  { width: '65%', align: 'flex-start', labelPosition: 'left' },   // left aligned, wider
+  { width: '45%', align: 'flex-end', labelPosition: 'right' },    // right aligned, smaller
+  { width: '58%', align: 'flex-start', labelPosition: 'left' },   // left aligned
+  { width: '52%', align: 'flex-end', labelPosition: 'right' },    // right aligned
+  { width: '60%', align: 'flex-start', labelPosition: 'left' },   // left aligned
+  { width: '48%', align: 'flex-end', labelPosition: 'right' },    // right aligned
+]
+
+// Desktop layout - organic staggered positions with varied sizes and more vertical spacing
 const ABSOLUTE_LAYOUTS = [
-  // Row 1 (top ~0)
-  { top: 0, left: '2%', width: '28%' },      // left
-  { top: 0, left: '36%', width: '20%' },     // center
-  { top: 0, left: '62%', width: '24%' },     // right
-  // Row 2 (top ~600)
-  { top: 600, left: '5%', width: '24%' },    // left
-  { top: 640, left: '42%', width: '28%' },   // right
-  // Row 3 (top ~1200)
-  { top: 1200, left: '50%', width: '32%' },  // right
-  { top: 1280, left: '8%', width: '30%' },   // left
+  // Row 1 - varied sizes and positions
+  { top: 60, left: '6%', width: '22%', labelPosition: 'right' },
+  { top: 180, left: '42%', width: '18%', labelPosition: 'left' },
+  { top: 0, left: '72%', width: '28%', labelPosition: 'left' },
+  // Row 2 - more vertical spread
+  { top: 580, left: '38%', width: '20%', labelPosition: 'right' },
+  { top: 720, left: '2%', width: '24%', labelPosition: 'left' },
+  { top: 480, left: '68%', width: '28%', labelPosition: 'left' },
+  // Row 3 - larger feature image with more spacing
+  { top: 1150, left: '10%', width: '42%', labelPosition: 'left' },
+  { top: 1380, left: '62%', width: '26%', labelPosition: 'left' },
+  // Row 4 - spread out more
+  { top: 1900, left: '4%', width: '28%', labelPosition: 'right' },
+  { top: 2050, left: '45%', width: '34%', labelPosition: 'left' },
+  { top: 1820, left: '75%', width: '22%', labelPosition: 'left' },
+  // Row 5
+  { top: 2600, left: '18%', width: '38%', labelPosition: 'left' },
 ]
 
 function getAspectRatio(item) {
@@ -54,8 +72,7 @@ export default function VenueGalleryModule({ images = [] }) {
   }, [])
 
   const isCompact = viewportWidth < 900
-  const columnGap = isCompact ? 'clamp(32px, 6vw, 80px)' : 'clamp(120px, 8vw, 220px)'
-  const rowGap = isCompact ? 64 : 220
+  const rowGap = isCompact ? 48 : 220
   const useAbsoluteLayout = !isCompact
 
   // Calculate dynamic container height based on actual image positions
@@ -67,13 +84,12 @@ export default function VenueGalleryModule({ images = [] }) {
     let maxBottom = 0
 
     clampedImages.forEach((item, idx) => {
-      const slotIndex = idx % ABSOLUTE_LAYOUTS.length
-      const band = Math.floor(idx / ABSOLUTE_LAYOUTS.length)
-      const layout = ABSOLUTE_LAYOUTS[slotIndex]
+      // Use layout position directly, no banding
+      const layout = ABSOLUTE_LAYOUTS[idx] || ABSOLUTE_LAYOUTS[idx % ABSOLUTE_LAYOUTS.length]
       const aspectRatio = getAspectRatio(item)
 
-      // Calculate top position
-      const top = layout.top + band * BAND_HEIGHT
+      // Calculate top position directly from layout
+      const top = layout.top
 
       // Estimate image height based on width percentage and aspect ratio
       const widthPercent = parseFloat(layout.width) / 100
@@ -97,12 +113,7 @@ export default function VenueGalleryModule({ images = [] }) {
         overflow: 'hidden',
         margin: '120px auto 160px',
         padding: '0 clamp(32px, 6vw, 140px)',
-        backgroundColor: '#050505',
-        backgroundImage: `
-          linear-gradient(rgba(200, 0, 0, 0.12) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(200, 0, 0, 0.12) 1px, transparent 1px)
-        `,
-        backgroundSize: '80px 80px',
+        backgroundColor: '#000000',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
@@ -116,44 +127,41 @@ export default function VenueGalleryModule({ images = [] }) {
                   width: '100%',
                 }
               : {
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                  columnGap,
-                  rowGap: `${rowGap}px`,
-                  alignItems: 'start',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: `${rowGap}px`,
                 }
           }
         >
           {clampedImages.map((item, idx) => {
             const label = item.title || item.label || ''
             const aspectRatio = getAspectRatio(item)
-            const variation = CARD_VARIATIONS[idx % CARD_VARIATIONS.length] || {}
-            const translateX = !useAbsoluteLayout && variation.translateX ? variation.translateX : '0%'
-            const translateY = !useAbsoluteLayout && variation.translateY ? variation.translateY : '0%'
-            const justifySelf = variation.justify || 'center'
-            const slotIndex = idx % ABSOLUTE_LAYOUTS.length
-            const verticalBand = Math.floor(idx / ABSOLUTE_LAYOUTS.length)
-            const absoluteSlot = ABSOLUTE_LAYOUTS[slotIndex] || {}
-            const topOffset = useAbsoluteLayout
-              ? `${(absoluteSlot.top || 0) + verticalBand * BAND_HEIGHT}px`
-              : undefined
+
+            // Desktop layout - use unique positions
+            const absoluteSlot = ABSOLUTE_LAYOUTS[idx] || ABSOLUTE_LAYOUTS[idx % ABSOLUTE_LAYOUTS.length]
+            const desktopLabelRight = absoluteSlot.labelPosition === 'right'
+
+            // Mobile layout
+            const mobileLayout = MOBILE_LAYOUTS[idx % MOBILE_LAYOUTS.length]
+            const mobileLabelRight = mobileLayout.labelPosition === 'right'
+
+            const isLabelRight = isCompact ? mobileLabelRight : desktopLabelRight
 
             return (
               <figure
                 key={item._key || `${item.imageUrl}-${idx}`}
                 style={{
                   margin: 0,
-                  width: useAbsoluteLayout ? absoluteSlot.width || '30%' : '100%',
-                  maxWidth: isCompact ? '100%' : 'min(440px, 32vw)',
-                  justifySelf: useAbsoluteLayout ? undefined : justifySelf,
+                  width: useAbsoluteLayout ? absoluteSlot.width || '30%' : mobileLayout.width,
+                  maxWidth: isCompact ? '100%' : undefined,
+                  alignSelf: useAbsoluteLayout ? undefined : mobileLayout.align,
                   position: useAbsoluteLayout ? 'absolute' : 'relative',
                   left: useAbsoluteLayout ? absoluteSlot.left || '0%' : undefined,
-                  top: useAbsoluteLayout ? topOffset : undefined,
-                  transform:
-                    !useAbsoluteLayout && (translateX !== '0%' || translateY !== '0%')
-                      ? `translate(${translateX}, ${translateY})`
-                      : 'none',
-                  transition: 'transform 0.3s ease',
+                  top: useAbsoluteLayout ? `${absoluteSlot.top}px` : undefined,
+                  display: 'flex',
+                  flexDirection: isLabelRight ? 'row-reverse' : 'row',
+                  alignItems: 'flex-start',
+                  gap: isCompact ? 16 : 12,
                 }}
               >
                 {label && (
@@ -163,10 +171,12 @@ export default function VenueGalleryModule({ images = [] }) {
                       fontFamily: 'var(--font-display, "Poppins", sans-serif)',
                       textTransform: 'uppercase',
                       color: '#fff',
-                      marginBottom: 12,
                       display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 8,
+                      flexDirection: 'column',
+                      alignItems: isLabelRight ? 'flex-end' : 'flex-start',
+                      gap: 4,
+                      whiteSpace: 'nowrap',
+                      paddingTop: 4,
                     }}
                   >
                     <span>{label}</span>
@@ -178,9 +188,8 @@ export default function VenueGalleryModule({ images = [] }) {
                     position: 'relative',
                     width: '100%',
                     aspectRatio,
-                    backgroundColor: '#0c0c0c',
-                    boxShadow: '0 24px 45px rgba(0, 0, 0, 0.6)',
                     overflow: 'hidden',
+                    flex: '1',
                   }}
                 >
                   <img

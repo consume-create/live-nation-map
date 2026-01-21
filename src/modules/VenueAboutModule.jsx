@@ -5,22 +5,38 @@ const GRID_BACKGROUND = `
   linear-gradient(90deg, rgba(40, 0, 0, 0.25) 1px, transparent 1px)
 `
 
-function renderList(title, entries = []) {
+function renderList(title, entries = [], isMobile = false) {
   if (!entries.length) return null
+
+  const titleWords = title.split(' ')
+
   return (
-    <div style={{ marginBottom: 60 }}>
+    <div style={{
+      marginBottom: isMobile ? 0 : 60,
+      display: isMobile ? 'flex' : 'block',
+      gap: isMobile ? 40 : 0,
+      alignItems: 'flex-start',
+    }}>
       <h3
         style={{
           fontFamily: 'var(--font-display, "Poppins", sans-serif)',
-          fontSize: 14,
+          fontSize: isMobile ? 24 : 14,
           textTransform: 'uppercase',
-          marginBottom: 20,
+          marginBottom: isMobile ? 0 : 20,
           fontWeight: 700,
+          lineHeight: 1.2,
+          minWidth: isMobile ? '120px' : 'auto',
         }}
       >
-        {title}
+        {isMobile ? (
+          <>
+            {titleWords[0]}<br />{titleWords.slice(1).join(' ')}
+          </>
+        ) : (
+          title
+        )}
       </h3>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: '#fff', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: '#fff', display: 'flex', flexDirection: 'column', gap: isMobile ? 24 : 18 }}>
         {entries.map((item, idx) => {
           const entry = typeof item === 'string' ? { name: item } : item
           return (
@@ -190,7 +206,7 @@ export default function VenueAboutModule({ about = {} }) {
       style={{
         width: '100%',
         padding: '140px clamp(32px, 6vw, 160px)',
-        background: '#050505',
+        background: '#000000',
         backgroundImage: GRID_BACKGROUND,
         backgroundSize: '80px 80px',
         color: '#fff',
@@ -233,7 +249,7 @@ export default function VenueAboutModule({ about = {} }) {
               </div>
               <div
                 style={{
-                  padding: '32px clamp(24px, 4vw, 60px)',
+                  padding: isStacked ? '32px 0' : '32px clamp(24px, 4vw, 60px)',
                 }}
               >
                 <div
@@ -255,9 +271,9 @@ export default function VenueAboutModule({ about = {} }) {
                       <h4
                         style={{
                           textTransform: 'uppercase',
-                          fontSize: 14,
-                          marginBottom: 12,
-                          fontWeight: 600,
+                          fontSize: isStacked ? 24 : 14,
+                          marginBottom: isStacked ? 20 : 12,
+                          fontWeight: isStacked ? 700 : 600,
                         }}
                       >
                         Services
@@ -278,15 +294,18 @@ export default function VenueAboutModule({ about = {} }) {
         <div style={{ paddingRight: isStacked ? 0 : 10 }}>
           <div
             style={{
-              borderTop: '1px solid rgba(255,255,255,0.1)',
-              paddingTop: 32,
-              marginBottom: 48,
+              borderTop: isStacked ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.1)',
+              paddingTop: isStacked ? 48 : 32,
+              marginBottom: isStacked ? 56 : 48,
             }}
           >
-            {renderList('The Partners', partners)}
+            {renderList('The Partners', partners, isStacked)}
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 32 }}>
-            {renderList('The Crew', crew)}
+          <div style={{
+            borderTop: isStacked ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.1)',
+            paddingTop: isStacked ? 48 : 32,
+          }}>
+            {renderList('The Crew', crew, isStacked)}
           </div>
         </div>
       </div>

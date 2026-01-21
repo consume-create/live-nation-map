@@ -309,7 +309,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
 
   // Desktop 3D view
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#030303', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#000000', position: 'relative', overflow: 'hidden' }}>
       <SiteHeader />
       <div
         style={{
@@ -577,7 +577,8 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           left: '60px',
           background: '#f7f7f7',
           color: '#111',
-          padding: '18px 32px 24px',
+          padding: '14px 24px 18px',
+          textAlign: 'center',
           borderRadius: '6px',
           boxShadow: '0 20px 45px rgba(0,0,0,0.45)',
           minWidth: '260px',
@@ -604,34 +605,33 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
 
         <div style={{ fontSize: '32px', fontWeight: 700, marginBottom: '4px' }}>{upperName}</div>
         <div style={{ fontSize: '14px', letterSpacing: '0.2em', marginBottom: '14px' }}>{subtitle}</div>
-        {point?.description && (
-          <p
-            style={{
-              margin: '0 0 18px 0',
-              fontSize: '13px',
-              lineHeight: 1.6,
-              color: '#303030',
-            }}
-          >
-            {point.description}
-          </p>
-        )}
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             onClick={onSeeMore}
             disabled={isLoading}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#ff2b2b'
+              e.currentTarget.style.color = '#fff'
+              e.currentTarget.style.borderColor = '#ff2b2b'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = '#000'
+              e.currentTarget.style.borderColor = '#000'
+            }}
             style={{
-              flex: 1,
+              width: '60%',
               padding: '10px 0',
               borderRadius: '4px',
-              border: 'none',
-              background: '#ff2b2b',
-              color: '#fff',
+              border: '1px solid #000',
+              background: 'transparent',
+              color: '#000',
               fontWeight: 600,
               letterSpacing: '0.12em',
               cursor: isLoading ? 'default' : 'pointer',
               opacity: isLoading ? 0.65 : 1,
               textTransform: 'uppercase',
+              transition: 'background 0.2s ease, color 0.2s ease, border-color 0.2s ease',
             }}
           >
             {isLoading ? 'Preparing…' : 'See More'}

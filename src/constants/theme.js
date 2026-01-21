@@ -2,8 +2,8 @@
 
 // Colors
 export const COLORS = {
-  BACKGROUND_DARK: '#030303',
-  BACKGROUND_ALT: '#050505',
+  BACKGROUND_DARK: '#000000',
+  BACKGROUND_ALT: '#000000',
   TEXT_WHITE: '#fff',
   TEXT_WHITE_70: 'rgba(255, 255, 255, 0.7)',
   TEXT_WHITE_85: 'rgba(255, 255, 255, 0.85)',
