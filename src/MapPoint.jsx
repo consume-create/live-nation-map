@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
+import { MAP_POINT } from './constants/theme'
 
 export default function MapPoint({ position, label, onClick, selected = false, onProject }) {
   const [hovered, setHovered] = useState(false)
@@ -8,14 +9,12 @@ export default function MapPoint({ position, label, onClick, selected = false, o
   const tempVec = useMemo(() => new THREE.Vector3(), [])
   const { size, camera } = useThree()
 
-  const outerRadius = 13
-  const middleRadius = 8.5
-  const innerRadius = 4.5
+  const { OUTER_RADIUS, MIDDLE_RADIUS, INNER_RADIUS, HIT_AREA_RADIUS, SCALE_IDLE, SCALE_ACTIVE, Z_OFFSET } = MAP_POINT
 
-  const outerRingGeometry = useMemo(() => new THREE.RingGeometry(outerRadius - 1.2, outerRadius, 64), [outerRadius])
-  const middleRingGeometry = useMemo(() => new THREE.RingGeometry(middleRadius - 1.1, middleRadius, 64), [middleRadius])
-  const coreDiskGeometry = useMemo(() => new THREE.CircleGeometry(innerRadius, 48), [innerRadius])
-  const hitAreaGeometry = useMemo(() => new THREE.CircleGeometry(outerRadius + 1.5, 48), [outerRadius])
+  const outerRingGeometry = useMemo(() => new THREE.RingGeometry(OUTER_RADIUS - 1.2, OUTER_RADIUS, 64), [OUTER_RADIUS])
+  const middleRingGeometry = useMemo(() => new THREE.RingGeometry(MIDDLE_RADIUS - 1.1, MIDDLE_RADIUS, 64), [MIDDLE_RADIUS])
+  const coreDiskGeometry = useMemo(() => new THREE.CircleGeometry(INNER_RADIUS, 48), [INNER_RADIUS])
+  const hitAreaGeometry = useMemo(() => new THREE.CircleGeometry(HIT_AREA_RADIUS, 48), [HIT_AREA_RADIUS])
 
   useEffect(() => () => {
     outerRingGeometry.dispose()
@@ -46,8 +45,8 @@ export default function MapPoint({ position, label, onClick, selected = false, o
   })
 
   return (
-    <group rotation={[Math.PI, 0, 0]} position={[position[0], position[1], 12.5]}>
-      <group ref={groupRef} scale={isActive ? 0.95 : 0.8}>
+    <group rotation={[Math.PI, 0, 0]} position={[position[0], position[1], Z_OFFSET]}>
+      <group ref={groupRef} scale={isActive ? SCALE_ACTIVE : SCALE_IDLE}>
         <mesh geometry={outerRingGeometry} position={[0, 0, 0]}>
           <meshBasicMaterial
             transparent

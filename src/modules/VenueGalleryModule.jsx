@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import ResponsiveImage from '../components/ResponsiveImage'
+import { useViewportWidth } from '../hooks/useViewportWidth'
+import { BREAKPOINTS, COLORS } from '../constants/theme'
 
 const DEFAULT_IMAGE_ASPECT = 4 / 3
 const LABEL_HEIGHT = 32 // approximate height for label + margin
@@ -61,18 +63,8 @@ export default function VenueGalleryModule({ images = [] }) {
 
   const clampedImages = images.slice(0, 12)
 
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1440 : window.innerWidth
-  )
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    const handleResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const isCompact = viewportWidth < 900
+  const viewportWidth = useViewportWidth()
+  const isCompact = viewportWidth < BREAKPOINTS.TABLET
   const rowGap = isCompact ? 48 : 220
   const useAbsoluteLayout = !isCompact
 
@@ -114,8 +106,8 @@ export default function VenueGalleryModule({ images = [] }) {
         overflow: 'hidden',
         margin: '120px auto 160px',
         padding: '0 clamp(32px, 6vw, 140px)',
-        backgroundColor: '#000000',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        backgroundColor: COLORS.BACKGROUND_DARK,
+        borderTop: `1px solid ${COLORS.BORDER_WHITE_08}`,
       }}
     >
       <div style={{ maxWidth: '1800px', margin: '0 auto', position: 'relative' }}>
@@ -171,7 +163,7 @@ export default function VenueGalleryModule({ images = [] }) {
                       fontSize: 13,
                       fontFamily: 'var(--font-display, "Poppins", sans-serif)',
                       textTransform: 'uppercase',
-                      color: '#fff',
+                      color: COLORS.TEXT_WHITE,
                       display: 'inline-flex',
                       flexDirection: 'column',
                       alignItems: isLabelRight ? 'flex-end' : 'flex-start',

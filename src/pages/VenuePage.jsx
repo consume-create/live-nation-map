@@ -7,7 +7,7 @@ import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
 import SiteHeader from '../modules/SiteHeader'
 import { useViewportWidth } from '../hooks/useViewportWidth'
-import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS } from '../constants/theme'
+import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS, CAMERA } from '../constants/theme'
 
 let heroSvgStylesInjected = false
 function ensureHeroSvgStyles() {
@@ -25,11 +25,7 @@ function ensureHeroSvgStyles() {
   heroSvgStylesInjected = true
 }
 
-const FLASHLIGHT_PLANE_BASE_HEIGHT = 120
-const FLASHLIGHT_SCALE_BASE = 1.1
-const FLASHLIGHT_CAMERA_FOV = 30
-const FLASHLIGHT_CAMERA_DISTANCE = 450
-const FLASHLIGHT_FOV_RAD = (FLASHLIGHT_CAMERA_FOV * Math.PI) / 180
+const FLASHLIGHT_FOV_RAD = (CAMERA.FLASHLIGHT_FOV * Math.PI) / 180
 
 function normalizeSvgElement(svg) {
   if (!svg) return
@@ -59,6 +55,26 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
     normalizeSvgElement(svg)
     svg.removeAttribute('style')
     svg.setAttribute('focusable', 'false')
+
+    // Security: Remove all inline event handlers and dangerous elements
+    const allElements = svg.querySelectorAll('*')
+    allElements.forEach((el) => {
+      // Remove all on* event handlers (onclick, onload, onmouseover, etc.)
+      Array.from(el.attributes).forEach((attr) => {
+        if (attr.name.toLowerCase().startsWith('on')) {
+          el.removeAttribute(attr.name)
+        }
+      })
+      // Remove javascript: hrefs
+      if (el.hasAttribute('href') && el.getAttribute('href')?.toLowerCase().startsWith('javascript:')) {
+        el.removeAttribute('href')
+      }
+      if (el.hasAttribute('xlink:href') && el.getAttribute('xlink:href')?.toLowerCase().startsWith('javascript:')) {
+        el.removeAttribute('xlink:href')
+      }
+    })
+    // Remove script and foreignObject elements entirely
+    svg.querySelectorAll('script, foreignObject').forEach((el) => el.remove())
 
     if (stripStrokes) {
       const strokeElements = svg.querySelectorAll('path, line, polyline, polygon')
@@ -91,9 +107,7 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
   }
 }
 
-const HERO_LOADER_MIN_MS = 1500
-const HERO_REVEAL_FADE_MS = 500
-const HERO_REVEAL_SLIDE_MS = 0
+const HERO_REVEAL_SLIDE_MS = 0 // Delay before starting reveal animation
 
 export default function VenuePage({ mapPoints, pointsLoading }) {
   const { slug } = useParams()
@@ -192,7 +206,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       if (cancelled || loaderHideScheduled) return
       loaderHideScheduled = true
       const elapsed = Date.now() - loaderStartRef.current
-      const remaining = Math.max(0, HERO_LOADER_MIN_MS - elapsed)
+      const remaining = Math.max(0, ANIMATIONS.HERO_LOADER_MIN_MS - elapsed)
       const hide = () => {
         if (cancelled) return
         setShowHeroLoader(false)
@@ -209,12 +223,23 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     }
 
     async function loadSvg(url) {
-      const response = await fetch(url, { mode: 'cors' })
-      const contentType = response.headers.get('content-type') || ''
-      if (!contentType.includes('svg')) {
-        throw new Error('Asset is not SVG')
+      try {
+        const response = await fetch(url, { mode: 'cors' })
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SVG: ${response.status} ${response.statusText}`)
+        }
+        const contentType = response.headers.get('content-type') || ''
+        if (!contentType.includes('svg')) {
+          throw new Error('Asset is not SVG')
+        }
+        return response.text()
+      } catch (error) {
+        if (error.name === 'TypeError') {
+          // Network error (CORS, offline, etc.)
+          throw new Error(`Network error loading SVG: ${error.message}`)
+        }
+        throw error
       }
-      return response.text()
     }
 
     async function loadHeroAssets() {
@@ -271,7 +296,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     if (!heroLoaderRendered) {
       fadeTimer = setTimeout(() => {
         setHeroVisible(true)
-      }, HERO_REVEAL_FADE_MS)
+      }, ANIMATIONS.HERO_REVEAL_FADE_MS)
     }
     return () => {
       if (fadeTimer) clearTimeout(fadeTimer)
@@ -317,7 +342,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     minHeight: isMobile ? 'auto' : '60vh',
     overflow: 'hidden',
     opacity: heroVisible ? 1 : 0,
-    transition: `opacity ${HERO_REVEAL_FADE_MS}ms ease`,
+    transition: `opacity ${ANIMATIONS.HERO_REVEAL_FADE_MS}ms ease`,
   }
 
   return (
@@ -572,12 +597,12 @@ export function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions
     setDisplayAspect(safeAspect)
   }, [safeAspect])
 
-  const isMobile = viewportWidth <= 768
+  const isMobile = viewportWidth <= BREAKPOINTS.MOBILE
   const rawWidth = viewportWidth * (isMobile ? 0.8 : 0.5)
   const clampedWidth = Math.max(220, rawWidth)
   const panelWidth = `${clampedWidth}px`
   const scaleMultiplier = isMobile ? 0.95 : 0.85
-  const baseScale = FLASHLIGHT_SCALE_BASE * scaleMultiplier
+  const baseScale = CAMERA.FLASHLIGHT_SCALE_BASE * scaleMultiplier
 
   return (
     <div
@@ -601,7 +626,7 @@ export function LogoFlashlightPanel({ logoUrl, aspectRatio = 5.2, logoDimensions
         }}
       >
         <Canvas
-          camera={{ position: [0, 0, FLASHLIGHT_CAMERA_DISTANCE], fov: FLASHLIGHT_CAMERA_FOV }}
+          camera={{ position: [0, 0, CAMERA.FLASHLIGHT_DISTANCE], fov: CAMERA.FLASHLIGHT_FOV }}
           dpr={[1, 1.5]}
           gl={{ alpha: true, premultipliedAlpha: false }}
           style={{ width: '100%', height: '100%' }}
@@ -633,8 +658,8 @@ function LogoFlashlight({ logoUrl, aspectRatio = 5.2, scaleMultiplier = 1, onAsp
     [aspectRatio]
   )
   const geometry = useMemo(() => {
-    const width = FLASHLIGHT_PLANE_BASE_HEIGHT * resolvedAspect
-    return new PlaneGeometry(width, FLASHLIGHT_PLANE_BASE_HEIGHT)
+    const width = CAMERA.FLASHLIGHT_BASE_HEIGHT * resolvedAspect
+    return new PlaneGeometry(width, CAMERA.FLASHLIGHT_BASE_HEIGHT)
   }, [resolvedAspect])
 
   useEffect(
@@ -663,9 +688,9 @@ function LogoFlashlight({ logoUrl, aspectRatio = 5.2, scaleMultiplier = 1, onAsp
   }, [texture, onAspectResolved])
 
   const viewWidthAtCamera =
-    2 * FLASHLIGHT_CAMERA_DISTANCE * Math.tan(Math.max(FLASHLIGHT_FOV_RAD / 2, 0.001))
-  const planeWidth = FLASHLIGHT_PLANE_BASE_HEIGHT * resolvedAspect
-  const baseScale = FLASHLIGHT_SCALE_BASE * scaleMultiplier
+    2 * CAMERA.FLASHLIGHT_DISTANCE * Math.tan(Math.max(FLASHLIGHT_FOV_RAD / 2, 0.001))
+  const planeWidth = CAMERA.FLASHLIGHT_BASE_HEIGHT * resolvedAspect
+  const baseScale = CAMERA.FLASHLIGHT_SCALE_BASE * scaleMultiplier
   const scaledPlaneWidth = planeWidth * baseScale
   const fitScale = scaledPlaneWidth > viewWidthAtCamera ? viewWidthAtCamera / scaledPlaneWidth : 1
   const finalScale = baseScale * fitScale

@@ -21,12 +21,3 @@ export function useViewportWidth(defaultWidth = BREAKPOINTS.DEFAULT_WIDTH) {
 
   return width
 }
-
-/**
- * Hook to check if viewport is mobile
- * @returns {boolean} True if viewport width < MOBILE breakpoint
- */
-export function useIsMobile() {
-  const width = useViewportWidth()
-  return width < BREAKPOINTS.MOBILE
-}

@@ -11,6 +11,7 @@ import CameraController from '../CameraController'
 import { US_BOUNDS } from '../usStates'
 import SiteHeader from '../modules/SiteHeader'
 import MobileMapView from '../components/MobileMapView'
+import { BREAKPOINTS, ANIMATIONS, SPACING, CAMERA, COLORS } from '../constants/theme'
 
 function generateKey(point, idx) {
   return point._id || point.slug || idx
@@ -88,8 +89,6 @@ function resolveSpacedPoints(points, minDistance) {
   })
 }
 
-const HEADER_HEIGHT = 180
-
 export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navigate = useNavigate()
   const [selectedSlug, setSelectedSlug] = useState(null)
@@ -115,15 +114,15 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
       setSplashOpacity(1)
     }, 50)
 
-    // Start fade out after 2 seconds
+    // Start fade out after splash duration
     const fadeOutTimer = setTimeout(() => {
       setSplashOpacity(0)
-    }, 2000)
+    }, ANIMATIONS.SPLASH_DURATION)
 
     // Remove splash after fade out completes
     const hideTimer = setTimeout(() => {
       setShowSplash(false)
-    }, 2600)
+    }, ANIMATIONS.SPLASH_REMOVAL)
 
     return () => {
       clearTimeout(fadeInTimer)
@@ -133,7 +132,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   }, [])
 
   // Tablet breakpoint for responsive swap
-  const isMobile = viewport.width < 768
+  const isMobile = viewport.width < BREAKPOINTS.MOBILE
 
   useEffect(() => {
     // Prevent body scroll for fixed 3D map viewport (desktop only)
@@ -159,7 +158,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
     const worldCenter = new Vector3(px, 12.5, -py)
     return {
       position: worldCenter,
-      zoomFactor: 0.3,  // Zoom to 30% of current distance from target
+      zoomFactor: CAMERA.ZOOM_FACTOR,
     }
   }, [])
 
@@ -309,7 +308,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
 
   // Desktop 3D view
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#000000', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100vh', background: COLORS.BACKGROUND_DARK, position: 'relative', overflow: 'hidden' }}>
       <SiteHeader />
       <div
         style={{
@@ -318,7 +317,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
           left: 0,
           right: 0,
           bottom: 0,
-          paddingTop: HEADER_HEIGHT,
+          paddingTop: SPACING.HEADER_HEIGHT,
         }}
       >
         <button
@@ -329,10 +328,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
           right: '20px',
           zIndex: 120,
           padding: '10px 18px',
-          background: '#ff6b6b',
+          background: COLORS.ACCENT_RED_LIGHT,
           border: 'none',
           borderRadius: '8px',
-          color: '#fff',
+          color: COLORS.TEXT_WHITE,
           cursor: 'pointer',
           fontWeight: '600'
         }}
@@ -349,8 +348,8 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
             transform: 'translateX(-50%)',
             zIndex: 110,
             padding: '10px 16px',
-            background: 'rgba(0, 0, 0, 0.65)',
-            color: '#fff',
+            background: COLORS.OVERLAY_DARK_65,
+            color: COLORS.TEXT_WHITE,
             fontSize: '13px',
             letterSpacing: '0.12em',
             borderRadius: '6px',
@@ -504,7 +503,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
     // Anchor is in viewport coords, MapPoint is in Canvas coords (needs offset for paddingTop)
     const { x: startX, y: startY } = start
     const { x: endX, y: endY } = screenPos
-    const containerEndY = endY + HEADER_HEIGHT // Add padding offset to Canvas coords
+    const containerEndY = endY + SPACING.HEADER_HEIGHT // Add padding offset to Canvas coords
     const midX = Math.max(startX + 80, endX)
 
     // Set positions (these don't animate)

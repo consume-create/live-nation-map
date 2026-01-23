@@ -1,8 +1,11 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import ResponsiveImage from '../components/ResponsiveImage'
 import { urlFor } from '../lib/imageUrl'
+import { useViewportWidth } from '../hooks/useViewportWidth'
+import { BREAKPOINTS, COLORS } from '../constants/theme'
 
-const GRID_BACKGROUND = `
+// Darker grid for about module (different opacity than global GRID_BACKGROUND)
+const ABOUT_GRID_BACKGROUND = `
   linear-gradient(rgba(40, 0, 0, 0.25) 1px, transparent 1px),
   linear-gradient(90deg, rgba(40, 0, 0, 0.25) 1px, transparent 1px)
 `
@@ -105,6 +108,7 @@ export default function VenueAboutModule({ about = {} }) {
             }}
           >
             <span
+              aria-hidden="true"
               style={{
                 width: 72,
                 height: 72,
@@ -166,6 +170,7 @@ export default function VenueAboutModule({ about = {} }) {
             aria-label="Play venue video"
           >
             <span
+              aria-hidden="true"
               style={{
                 width: 80,
                 height: 80,
@@ -187,18 +192,8 @@ export default function VenueAboutModule({ about = {} }) {
     )
   }, [videoPosterUrl, about?.videoUrl, isPlaying, videoElement])
 
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1440 : window.innerWidth
-  )
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined
-    const handleResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const isStacked = viewportWidth <= 1024
+  const viewportWidth = useViewportWidth()
+  const isStacked = viewportWidth <= BREAKPOINTS.DESKTOP
 
   if (!hasData) return null
 
@@ -207,10 +202,10 @@ export default function VenueAboutModule({ about = {} }) {
       style={{
         width: '100%',
         padding: '140px clamp(32px, 6vw, 160px)',
-        background: '#000000',
-        backgroundImage: GRID_BACKGROUND,
+        background: COLORS.BACKGROUND_DARK,
+        backgroundImage: ABOUT_GRID_BACKGROUND,
         backgroundSize: '80px 80px',
-        color: '#fff',
+        color: COLORS.TEXT_WHITE,
       }}
     >
       <div

@@ -51,22 +51,6 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-/* Skip link for accessibility (hidden until focused) */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  background: var(--color-background);
-  color: var(--color-text);
-  padding: 8px 16px;
-  z-index: 10000;
-  text-decoration: none;
-}
-
-.skip-link:focus {
-  top: 0;
-}
-
 /* Visually hidden but accessible to screen readers */
 .sr-only {
   position: absolute;

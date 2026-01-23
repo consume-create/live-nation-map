@@ -7,7 +7,14 @@ export default function USMap() {
   const meshes = useMemo(() => {
     const allMeshes = []
 
+    // Validate GeoJSON data
+    if (!usStatesData?.features || !Array.isArray(usStatesData.features)) {
+      console.warn('[USMap] Invalid GeoJSON data: features array not found')
+      return allMeshes
+    }
+
     usStatesData.features.forEach((feature) => {
+      if (!feature?.geometry) return
       const geometry = feature.geometry
 
       const pushShape = (ring) => {

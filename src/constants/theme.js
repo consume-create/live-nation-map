@@ -49,6 +49,9 @@ export const ANIMATIONS = {
   MS_2000: 2000,
   SPLASH_DURATION: 2000,
   SPLASH_REMOVAL: 2600,
+  SPLASH_FADE_IN_MS: 50,
+  HERO_LOADER_MIN_MS: 1500,
+  HERO_REVEAL_FADE_MS: 500,
 }
 
 // Common spacing values (in pixels)
@@ -68,4 +71,24 @@ export const GRID_BACKGROUND = {
     linear-gradient(90deg, ${COLORS.GRID_RED} 1px, transparent 1px)
   `,
   size: '40px 40px',
+}
+
+// 3D Map point marker dimensions
+export const MAP_POINT = {
+  OUTER_RADIUS: 13,
+  MIDDLE_RADIUS: 8.5,
+  INNER_RADIUS: 4.5,
+  HIT_AREA_RADIUS: 14.5,
+  SCALE_IDLE: 0.8,
+  SCALE_ACTIVE: 0.95,
+  Z_OFFSET: 12.5,
+}
+
+// Camera and flashlight settings
+export const CAMERA = {
+  ZOOM_FACTOR: 0.3,
+  FLASHLIGHT_BASE_HEIGHT: 120,
+  FLASHLIGHT_SCALE_BASE: 1.1,
+  FLASHLIGHT_FOV: 30,
+  FLASHLIGHT_DISTANCE: 450,
 }
