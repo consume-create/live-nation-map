@@ -38,7 +38,7 @@ export default function App() {
   }, [])
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/map">
       <Routes>
         <Route
           path="/"
