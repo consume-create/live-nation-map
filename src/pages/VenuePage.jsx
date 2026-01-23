@@ -6,6 +6,7 @@ import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
 import SiteHeader from '../modules/SiteHeader'
+import BackButton from '../components/BackButton'
 import { useViewportWidth } from '../hooks/useViewportWidth'
 import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS, CAMERA } from '../constants/theme'
 
@@ -357,6 +358,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       }}
     >
       <SiteHeader />
+      <BackButton />
 
       <h1 className="sr-only">{venue.title}</h1>
 
