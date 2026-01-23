@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import ResponsiveImage from '../components/ResponsiveImage'
 
 const DEFAULT_IMAGE_ASPECT = 4 / 3
 const LABEL_HEIGHT = 32 // approximate height for label + margin
@@ -183,26 +184,36 @@ export default function VenueGalleryModule({ images = [] }) {
                     <span>/</span>
                   </figcaption>
                 )}
-                <div
-                  style={{
-                    position: 'relative',
-                    width: '100%',
-                    aspectRatio,
-                    overflow: 'hidden',
-                    flex: '1',
-                  }}
-                >
-                  <img
-                    src={item.imageUrl || item.src}
-                    alt={label}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                    }}
-                    loading="lazy"
-                  />
+                <div style={{ flex: '1' }}>
+                  {item.image ? (
+                    <ResponsiveImage
+                      image={item.image}
+                      alt={label}
+                      aspectRatio={aspectRatio}
+                      sizes="(max-width: 900px) 65vw, 30vw"
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        aspectRatio,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <img
+                        src={item.imageUrl || item.src}
+                        alt={label}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
                 </div>
               </figure>
             )

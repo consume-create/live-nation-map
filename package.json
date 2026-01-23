@@ -16,6 +16,7 @@
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "@sanity/client": "^6.17.1",
+    "@sanity/image-url": "^2.0.3",
     "groq": "^3.36.2",
     "lil-gui": "^0.20.0",
     "react": "^19.2.0",

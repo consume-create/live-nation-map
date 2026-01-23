@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
+import ResponsiveImage from '../components/ResponsiveImage'
+import { urlFor } from '../lib/imageUrl'
 
 const GRID_BACKGROUND = `
   linear-gradient(rgba(40, 0, 0, 0.25) 1px, transparent 1px),
@@ -66,9 +68,13 @@ export default function VenueAboutModule({ about = {} }) {
   const partners = Array.isArray(about?.partners) ? about.partners : []
   const crew = Array.isArray(about?.crew) ? about.crew : []
 
+  const videoPosterUrl = about?.videoPoster?.asset?.url
+    ? urlFor(about.videoPoster).width(1200).auto('format').quality(80).url()
+    : null
+
   const videoElement = useMemo(() => {
     if (!about?.videoUrl) {
-      if (!about?.videoPosterUrl) return null
+      if (!about?.videoPoster?.asset) return null
       return (
         <div
           style={{
@@ -77,15 +83,10 @@ export default function VenueAboutModule({ about = {} }) {
             height: '100%',
           }}
         >
-          <img
-            src={about.videoPosterUrl}
-            alt=""
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-            }}
+          <ResponsiveImage
+            image={about.videoPoster}
+            sizes="(max-width: 1024px) 100vw, 60vw"
+            style={{ width: '100%', height: '100%' }}
           />
           <div
             style={{
@@ -123,7 +124,7 @@ export default function VenueAboutModule({ about = {} }) {
     }
 
     return null
-  }, [about?.videoPosterUrl, about?.videoUrl])
+  }, [about?.videoPoster, about?.videoUrl])
 
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -138,7 +139,7 @@ export default function VenueAboutModule({ about = {} }) {
         <video
           ref={videoRef}
           src={about.videoUrl}
-          poster={about.videoPosterUrl}
+          poster={videoPosterUrl || undefined}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           controls={isPlaying}
           onPlay={() => setIsPlaying(true)}
@@ -184,7 +185,7 @@ export default function VenueAboutModule({ about = {} }) {
         )}
       </div>
     )
-  }, [about?.videoPosterUrl, about?.videoUrl, isPlaying, videoElement])
+  }, [videoPosterUrl, about?.videoUrl, isPlaying, videoElement])
 
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1440 : window.innerWidth

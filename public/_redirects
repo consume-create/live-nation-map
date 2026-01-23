@@ -1,1 +1,3 @@
-/*    /index.html   200
+/map/assets/*  /assets/:splat  200
+/              /map/           301
+/map/*         /index.html    200

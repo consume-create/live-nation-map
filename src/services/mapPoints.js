@@ -14,7 +14,13 @@ const mapPointsQuery = groq`
     region,
     location,
     description,
-    "heroImageUrl": heroImage.asset->url,
+    "heroImage": heroImage{
+      asset->{
+        _id, url,
+        metadata{ lqip, dimensions{ width, height, aspectRatio } }
+      },
+      hotspot, crop
+    },
     "heroLineSvgUrl": heroLineAnimation.asset->url,
     "logoData": {
       "url": logoTexture.asset->url,
@@ -24,15 +30,24 @@ const mapPointsQuery = groq`
       _key,
       title,
       position,
-      "imageData": {
-        "url": image.asset->url,
-        "dimensions": image.asset->metadata.dimensions
+      "image": image{
+        asset->{
+          _id, url,
+          metadata{ lqip, dimensions{ width, height, aspectRatio } }
+        },
+        hotspot, crop
       }
     },
     aboutModule{
       "videoUrl": video.asset->url,
       "videoType": video.asset->mimeType,
-      "videoPosterUrl": videoPoster.asset->url,
+      "videoPoster": videoPoster{
+        asset->{
+          _id, url,
+          metadata{ lqip, dimensions{ width, height, aspectRatio } }
+        },
+        hotspot, crop
+      },
       description,
       services,
       partners[]{
@@ -51,38 +66,25 @@ function normaliseGallery(rawGallery) {
   const gallery = Array.isArray(rawGallery) ? rawGallery : []
 
   return gallery
+    .filter((item) => Boolean(item?.image?.asset?.url))
     .map((item) => {
-      const dimensions = item?.imageData?.dimensions || {}
-      const width = typeof dimensions.width === 'number' ? dimensions.width : null
-      const height = typeof dimensions.height === 'number' ? dimensions.height : null
-      const aspectFromMeta =
+      const dimensions = item.image.asset?.metadata?.dimensions || {}
+      const aspectRatio =
         typeof dimensions.aspectRatio === 'number' && dimensions.aspectRatio > 0
           ? dimensions.aspectRatio
           : null
-      const aspectFromSize =
-        width && height && width > 0 && height > 0 ? width / height : null
-      const aspectRatio = aspectFromMeta || aspectFromSize || null
 
       return {
-        _key: item?._key,
-        title: item?.title,
-        position: item?.position,
-        imageUrl: item?.imageData?.url,
-        width,
-        height,
+        _key: item._key || item.image.asset.url,
+        title: item.title || '',
+        position: item.position || {},
+        image: item.image,
+        imageUrl: item.image.asset.url,
+        width: dimensions.width || null,
+        height: dimensions.height || null,
         aspectRatio,
       }
     })
-    .filter((item) => Boolean(item?.imageUrl))
-    .map((item) => ({
-      _key: item._key || item.imageUrl,
-      title: item.title || '',
-      imageUrl: item.imageUrl,
-      position: item.position || {},
-      width: item.width,
-      height: item.height,
-      aspectRatio: item.aspectRatio,
-    }))
 }
 
 function mapToRenderable(point) {
@@ -100,8 +102,9 @@ function mapToRenderable(point) {
     description: point.description,
     location: point.location,
     position: latLonTo3D(lng, lat),
-    heroImageUrl: point.heroImageUrl,
-    heroLineSvgUrl: point.heroLineSvgUrl || point.heroImageUrl,
+    heroImage: point.heroImage || null,
+    heroImageUrl: point.heroImage?.asset?.url || null,
+    heroLineSvgUrl: point.heroLineSvgUrl || point.heroImage?.asset?.url,
     logoUrl: point.logoData?.url,
     logoAspectRatio: point.logoData?.dimensions?.aspectRatio || 5.2,
     logoDimensions: {
