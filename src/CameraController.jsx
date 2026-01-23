@@ -9,6 +9,7 @@ export default function CameraController({ targetPosition, onComplete }) {
   const startPosition = useRef(new THREE.Vector3())
   const startTarget = useRef(new THREE.Vector3())
   const startOffset = useRef(new THREE.Vector3())
+  const endOffset = useRef(new THREE.Vector3())
   const progress = useRef(0)
 
   useEffect(() => {
@@ -22,15 +23,21 @@ export default function CameraController({ targetPosition, onComplete }) {
       } else {
         startTarget.current.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(50))
       }
-      const baseOffset = startPosition.current.clone().sub(startTarget.current)
 
+      // Calculate the starting offset (current camera offset from its target)
+      // Use clone() to avoid mutation
+      const baseOffset = startPosition.current.clone().sub(startTarget.current)
+      startOffset.current.copy(baseOffset)
+
+      // Calculate END offset (where camera should be relative to final target)
       const manualOffset = getVectorFromTarget(targetPosition.offset)
       if (manualOffset) {
-        startOffset.current.copy(manualOffset)
+        endOffset.current.copy(manualOffset)
       } else if (typeof targetPosition.zoomFactor === 'number') {
-        startOffset.current.copy(baseOffset.multiplyScalar(targetPosition.zoomFactor))
+        // Clone baseOffset before scaling to avoid mutation
+        endOffset.current.copy(baseOffset.clone().multiplyScalar(targetPosition.zoomFactor))
       } else {
-        startOffset.current.copy(baseOffset)
+        endOffset.current.copy(baseOffset)
       }
 
       if (targetPosition.position) {
@@ -58,31 +65,31 @@ export default function CameraController({ targetPosition, onComplete }) {
     // Smooth easing function
     const t = easeInOutCubic(progress.current)
 
-    // Pin/Building center position
-    const targetCenter = targetRef.current.clone()
-
-    // Calculate camera position - position camera relative to target
-    const targetCameraPos = targetCenter.clone().add(startOffset.current)
-
-    // Animate camera position
-    const newPosition = new THREE.Vector3().lerpVectors(
-      startPosition.current,
-      targetCameraPos,
+    // Interpolate the look-at target from start to end
+    const currentTarget = new THREE.Vector3().lerpVectors(
+      startTarget.current,
+      targetRef.current,
       t
     )
+
+    // Interpolate the offset from target to camera
+    // This ensures smooth transition from current view to zoomed view
+    const currentOffset = new THREE.Vector3().lerpVectors(
+      startOffset.current,
+      endOffset.current,
+      t
+    )
+
+    // Camera position = current target + current offset
+    const newPosition = currentTarget.clone().add(currentOffset)
     camera.position.copy(newPosition)
 
-    // Animate controls target - point at the center
+    // Update controls target
     if (controls) {
-      const newTarget = new THREE.Vector3().lerpVectors(
-        startTarget.current,
-        targetCenter,
-        t
-      )
-      controls.target.copy(newTarget)
+      controls.target.copy(currentTarget)
       controls.update()
     } else {
-      camera.lookAt(targetCenter)
+      camera.lookAt(currentTarget)
     }
   })
 
