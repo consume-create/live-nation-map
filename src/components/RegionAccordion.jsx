@@ -50,7 +50,7 @@ export default function RegionAccordion({ title, venues = [] }) {
           {title}
         </span>
         <img
-          src="/images/plus-button.svg"
+          src={`${import.meta.env.BASE_URL}images/plus-button.svg`}
           alt=""
           aria-hidden="true"
           style={{
@@ -94,7 +94,7 @@ export default function RegionAccordion({ title, venues = [] }) {
             >
               {/* Arrow Icon */}
               <img
-                src="/images/ln-arrow.svg"
+                src={`${import.meta.env.BASE_URL}images/ln-arrow.svg`}
                 alt=""
                 aria-hidden="true"
                 style={{

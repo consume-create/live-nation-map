@@ -54,7 +54,7 @@ export default function MobileMapView({ mapPoints = [] }) {
       {/* Static map image */}
       <div style={{ width: '100%', padding: '20px 20px 40px', paddingTop: '120px' }}>
         <img
-          src="/images/mobile-map.png"
+          src={`${import.meta.env.BASE_URL}images/mobile-map.png`}
           alt="Interactive map of Live Nation venues across the United States"
           style={{
             width: '100%',

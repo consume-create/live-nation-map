@@ -290,7 +290,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         }}
       >
         <img
-          src="/images/live-nation-logo.svg"
+          src={`${import.meta.env.BASE_URL}images/live-nation-logo.svg`}
           alt="Live Nation"
           style={{
             width: 'calc(100% - 40px)',

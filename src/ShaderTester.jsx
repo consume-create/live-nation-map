@@ -62,7 +62,7 @@ export default function ShaderTester({ onExit }) {
 }
 
 function FlashlightPlaneScene({ configureParams, showControls }) {
-  const warsawTexture = useLoader(TextureLoader, '/images/warsaw.svg')
+  const warsawTexture = useLoader(TextureLoader, `${import.meta.env.BASE_URL}images/warsaw.svg`)
   const logoGeometry = useMemo(() => new PlaneGeometry(160, 25.14), [])
 
   useEffect(() => {
