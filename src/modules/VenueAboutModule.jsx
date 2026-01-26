@@ -64,7 +64,8 @@ export default function VenueAboutModule({ about = {} }) {
       about?.services?.length ||
       about?.partners?.length ||
       about?.crew?.length ||
-      about?.videoUrl
+      about?.videoUrl ||
+      about?.videoPoster?.asset
   )
   const descriptionBlocks = Array.isArray(about?.description) ? about.description : []
   const services = Array.isArray(about?.services) ? about.services.filter(Boolean) : []
@@ -75,70 +76,35 @@ export default function VenueAboutModule({ about = {} }) {
     ? urlFor(about.videoPoster).width(1200).auto('format').quality(80).url()
     : null
 
-  const videoElement = useMemo(() => {
-    if (!about?.videoUrl) {
-      if (!about?.videoPoster?.asset) return null
-      return (
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-          }}
-        >
-          <ResponsiveImage
-            image={about.videoPoster}
-            sizes="(max-width: 1024px) 100vw, 60vw"
-            style={{ width: '100%', height: '100%' }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.4))',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <span
-              aria-hidden="true"
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                border: '2px solid #fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(0,0,0,0.45)',
-              }}
-            >
-              ▶
-            </span>
-          </div>
-        </div>
-      )
-    }
-
-    return null
-  }, [about?.videoPoster, about?.videoUrl])
+  // Image-only element (no play button)
+  const imageElement = useMemo(() => {
+    if (!about?.videoPoster?.asset) return null
+    return (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        <ResponsiveImage
+          image={about.videoPoster}
+          sizes="(max-width: 1024px) 100vw, 60vw"
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+    )
+  }, [about?.videoPoster])
 
   const videoRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
 
   const mediaContent = useMemo(() => {
-    if (!about?.videoUrl) {
-      return videoElement
-    }
+    const hasVideo = Boolean(about?.videoUrl)
+    const hasImage = Boolean(about?.videoPoster?.asset)
 
-    return (
+    // Video element with play button overlay
+    const videoWithPlayButton = hasVideo ? (
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         <video
           ref={videoRef}
@@ -189,11 +155,40 @@ export default function VenueAboutModule({ about = {} }) {
           </button>
         )}
       </div>
-    )
-  }, [videoPosterUrl, about?.videoUrl, isPlaying, videoElement])
+    ) : null
+
+    // Case 1: Both image and video - stack them vertically
+    if (hasImage && hasVideo) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+            {imageElement}
+          </div>
+          <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+            {videoWithPlayButton}
+          </div>
+        </div>
+      )
+    }
+
+    // Case 2: Image only - show image without play button
+    if (hasImage && !hasVideo) {
+      return imageElement
+    }
+
+    // Case 3: Video only - show video with play button
+    if (hasVideo) {
+      return videoWithPlayButton
+    }
+
+    return null
+  }, [videoPosterUrl, about?.videoUrl, about?.videoPoster?.asset, isPlaying, imageElement])
 
   const viewportWidth = useViewportWidth()
   const isStacked = viewportWidth <= BREAKPOINTS.DESKTOP
+
+  // Check if both image and video exist (for layout purposes)
+  const hasBothMedia = Boolean(about?.videoPoster?.asset) && Boolean(about?.videoUrl)
 
   if (!hasData) return null
 
@@ -240,7 +235,7 @@ export default function VenueAboutModule({ about = {} }) {
               About
             </h2>
             <div>
-              <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', marginBottom: 28 }}>
+              <div style={{ width: '100%', aspectRatio: hasBothMedia ? undefined : '16 / 9', overflow: 'hidden', marginBottom: 28 }}>
                 {mediaContent}
               </div>
               <div

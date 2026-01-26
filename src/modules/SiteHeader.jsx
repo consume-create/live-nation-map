@@ -4,7 +4,6 @@ import { useViewportWidth } from '../hooks/useViewportWidth'
 import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS } from '../constants/theme'
 import headerIconLeft from '../assets/header-icon-left.svg'
 import headerIconCenter from '../assets/header-icon-center.svg'
-import headerIconRight from '../assets/header-icon-right.svg'
 
 export default function SiteHeader() {
   const navigate = useNavigate()
@@ -102,10 +101,9 @@ export default function SiteHeader() {
                   We worked with over 50+ clients, venue managers and owners, to create over 20+ venue stories,
                   re-brands and more.
                 </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <a href="https://consumeandcreate.co" target="_blank" rel="noopener noreferrer">
                   <img src={headerIconCenter} alt="Consume and Create logo" style={{ width: 36, height: 36 }} />
-                  <img src={headerIconRight} alt="Productions badge" style={{ width: 36, height: 36 }} />
-                </div>
+                </a>
               </div>
             </>
           )}

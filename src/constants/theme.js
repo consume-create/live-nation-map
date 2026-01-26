@@ -93,3 +93,19 @@ export const CAMERA = {
   FLASHLIGHT_FOV: 30,
   FLASHLIGHT_DISTANCE: 450,
 }
+
+// Gallery layout constants
+export const GALLERY = {
+  BLOCK_GAP: 100,
+  BLOCK_GAP_MOBILE: 48,
+  GRID_GAP: 24,
+  GRID_GAP_MOBILE: 16,
+  HERO_WIDTH: '58%',
+  LARGE_WIDTH: '55%',
+  MEDIUM_WIDTH: '45%',
+  SMALL_WIDTH: '35%',
+  FULL_WIDTH: '85%',
+  FEATURE_WIDTH_MOBILE: '90%',
+  PAIR_LEFT_WIDTH: '42%',
+  PAIR_RIGHT_WIDTH: '52%',
+}
