@@ -13,7 +13,6 @@ const mapPointsQuery = groq`
     city,
     region,
     location,
-    description,
     "heroImage": heroImage{
       asset->{
         _id, url,
@@ -29,7 +28,6 @@ const mapPointsQuery = groq`
     gallery[]{
       _key,
       title,
-      position,
       "image": image{
         asset->{
           _id, url,
@@ -77,7 +75,6 @@ function normaliseGallery(rawGallery) {
       return {
         _key: item._key || item.image.asset.url,
         title: item.title || '',
-        position: item.position || {},
         image: item.image,
         imageUrl: item.image.asset.url,
         width: dimensions.width || null,
@@ -99,7 +96,6 @@ function mapToRenderable(point) {
     state: point.state,
     city: point.city,
     region: point.region,
-    description: point.description,
     location: point.location,
     position: latLonTo3D(lng, lat),
     heroImage: point.heroImage || null,
