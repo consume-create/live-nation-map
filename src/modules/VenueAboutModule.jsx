@@ -250,12 +250,16 @@ export default function VenueAboutModule({ about = {} }) {
                     columnGap: services.length > 0 && !isStacked ? 48 : 0,
                   }}
                 >
-                  <div>
-                    {descriptionBlocks.map((block, idx) => (
-                      <p key={`desc-${idx}`} style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.85, whiteSpace: 'pre-line' }}>
-                        {block.children?.map((span) => span.text).join('') ?? ''}
-                      </p>
-                    ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {descriptionBlocks.map((block, idx) => {
+                      const text = block.children?.map((span) => span.text).join('') ?? ''
+                      const lines = text.split('\n')
+                      return lines.map((line, lineIdx) => (
+                        <p key={`desc-${idx}-${lineIdx}`} style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.85, margin: 0 }}>
+                          {line || '\u00A0'}
+                        </p>
+                      ))
+                    })}
                   </div>
                   {services.length > 0 && (
                     <div style={{ marginTop: services.length > 0 && !isStacked ? 0 : 32 }}>

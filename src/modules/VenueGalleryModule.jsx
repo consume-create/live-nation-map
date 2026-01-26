@@ -115,7 +115,7 @@ export default function VenueGalleryModule({ images = [] }) {
           }
         >
           {clampedImages.map((item, idx) => {
-            const label = item.title || item.label || ''
+            const label = (item.title || item.label || '').trim()
             const aspectRatio = getAspectRatio(item)
 
             // Desktop - scattered absolute positioning
