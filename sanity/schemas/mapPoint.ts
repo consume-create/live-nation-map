@@ -153,17 +153,6 @@ export default defineType({
               },
               validation: (rule) => rule.required(),
             }),
-            defineField({
-              name: 'position',
-              title: 'Overlay Positioning',
-              type: 'object',
-              fields: [
-                { name: 'top', title: 'Top (%)', type: 'number' },
-                { name: 'left', title: 'Left (%)', type: 'number' },
-                { name: 'bottom', title: 'Bottom (%)', type: 'number' },
-                { name: 'right', title: 'Right (%)', type: 'number' },
-              ],
-            }),
           ],
           preview: {
             select: {

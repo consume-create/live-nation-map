@@ -252,7 +252,7 @@ export default function VenueAboutModule({ about = {} }) {
                 >
                   <div>
                     {descriptionBlocks.map((block, idx) => (
-                      <p key={`desc-${idx}`} style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.85 }}>
+                      <p key={`desc-${idx}`} style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.85, whiteSpace: 'pre-line' }}>
                         {block.children?.map((span) => span.text).join('') ?? ''}
                       </p>
                     ))}
