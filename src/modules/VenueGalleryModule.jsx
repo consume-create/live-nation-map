@@ -25,6 +25,24 @@ const SCATTER_LAYOUTS = [
   // Row 5 - two images
   { top: 2480, left: '8%', width: '44%', labelPosition: 'left' },
   { top: 2520, left: '58%', width: '38%', labelPosition: 'right' },
+  // Row 6 - three images
+  { top: 3100, left: '4%', width: '36%', labelPosition: 'right' },
+  { top: 3160, left: '44%', width: '28%', labelPosition: 'left' },
+  { top: 3120, left: '74%', width: '24%', labelPosition: 'left' },
+  // Row 7 - two images
+  { top: 3700, left: '10%', width: '40%', labelPosition: 'left' },
+  { top: 3760, left: '56%', width: '42%', labelPosition: 'right' },
+  // Row 8 - three images staggered
+  { top: 4320, left: '0%', width: '32%', labelPosition: 'right' },
+  { top: 4380, left: '36%', width: '34%', labelPosition: 'left' },
+  { top: 4340, left: '72%', width: '26%', labelPosition: 'left' },
+  // Row 9 - two images
+  { top: 4920, left: '4%', width: '48%', labelPosition: 'left' },
+  { top: 4980, left: '56%', width: '40%', labelPosition: 'right' },
+  // Row 10 - three images
+  { top: 5560, left: '2%', width: '34%', labelPosition: 'right' },
+  { top: 5620, left: '40%', width: '30%', labelPosition: 'left' },
+  { top: 5580, left: '74%', width: '24%', labelPosition: 'left' },
 ]
 
 // Mobile layout - randomized widths (60-90%)
@@ -41,6 +59,19 @@ const MOBILE_LAYOUTS = [
   { width: '72%', align: 'flex-end', labelPosition: 'right' },
   { width: '85%', align: 'flex-start', labelPosition: 'left' },
   { width: '78%', align: 'flex-end', labelPosition: 'right' },
+  // Additional 12 layouts for extended gallery
+  { width: '76%', align: 'flex-start', labelPosition: 'left' },
+  { width: '64%', align: 'flex-end', labelPosition: 'right' },
+  { width: '86%', align: 'flex-start', labelPosition: 'left' },
+  { width: '58%', align: 'flex-end', labelPosition: 'right' },
+  { width: '72%', align: 'flex-start', labelPosition: 'left' },
+  { width: '88%', align: 'flex-end', labelPosition: 'right' },
+  { width: '66%', align: 'flex-start', labelPosition: 'left' },
+  { width: '80%', align: 'flex-end', labelPosition: 'right' },
+  { width: '74%', align: 'flex-start', labelPosition: 'left' },
+  { width: '68%', align: 'flex-end', labelPosition: 'right' },
+  { width: '84%', align: 'flex-start', labelPosition: 'left' },
+  { width: '76%', align: 'flex-end', labelPosition: 'right' },
 ]
 
 function getAspectRatio(item) {
@@ -61,7 +92,7 @@ function seededRandom(seed) {
 export default function VenueGalleryModule({ images = [] }) {
   if (!Array.isArray(images) || !images.length) return null
 
-  const clampedImages = images.slice(0, 12)
+  const clampedImages = images.slice(0, 24)
   const viewportWidth = useViewportWidth()
   const isCompact = viewportWidth < BREAKPOINTS.TABLET
 

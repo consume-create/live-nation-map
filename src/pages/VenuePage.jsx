@@ -348,9 +348,9 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
 
   const heroArtStageStyle = {
     position: 'relative',
-    width: '100vw',
-    maxWidth: '100vw',
-    marginLeft: 'calc(50% - 50vw)',
+    width: '100%',
+    maxWidth: '100%',
+    marginLeft: 0,
     aspectRatio: '1920 / 1080',
     minHeight: isMobile ? 'auto' : '60vh',
     overflow: 'hidden',
