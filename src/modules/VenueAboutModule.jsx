@@ -72,8 +72,12 @@ export default function VenueAboutModule({ about = {} }) {
   const partners = Array.isArray(about?.partners) ? about.partners : []
   const crew = Array.isArray(about?.crew) ? about.crew : []
 
+  // Check if video poster is a GIF - use raw URL to preserve animation (any Sanity transform strips frames)
+  const isVideoPosterGif = about?.videoPoster?.asset?.mimeType === 'image/gif'
   const videoPosterUrl = about?.videoPoster?.asset?.url
-    ? urlFor(about.videoPoster).width(1200).auto('format').quality(80).url()
+    ? isVideoPosterGif
+      ? about.videoPoster.asset.url  // Raw URL, no transformations
+      : urlFor(about.videoPoster).width(1200).auto('format').quality(80).url()
     : null
 
   // Image-only element (no play button)

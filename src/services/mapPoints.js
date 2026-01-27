@@ -30,7 +30,7 @@ const mapPointsQuery = groq`
       title,
       "image": image{
         asset->{
-          _id, url,
+          _id, url, mimeType,
           metadata{ lqip, dimensions{ width, height, aspectRatio } }
         },
         hotspot, crop
@@ -41,7 +41,7 @@ const mapPointsQuery = groq`
       "videoType": video.asset->mimeType,
       "videoPoster": videoPoster{
         asset->{
-          _id, url,
+          _id, url, mimeType,
           metadata{ lqip, dimensions{ width, height, aspectRatio } }
         },
         hotspot, crop
