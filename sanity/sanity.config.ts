@@ -1,6 +1,7 @@
 import { defineConfig } from 'sanity'
 import { deskTool } from 'sanity/desk'
 import { visionTool } from '@sanity/vision'
+import { media } from 'sanity-plugin-media'
 import { schemaTypes } from './schemas'
 
 const projectId =
@@ -21,7 +22,7 @@ export default defineConfig({
   title: '3D Map CMS',
   projectId,
   dataset,
-  plugins: [deskTool(), visionTool()],
+  plugins: [deskTool(), visionTool(), media()],
   schema: {
     types: schemaTypes,
   },
