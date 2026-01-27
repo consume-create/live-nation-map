@@ -1,10 +1,11 @@
-import { Suspense, useMemo, useEffect, useState, useRef } from 'react'
+import { Suspense, useMemo, useEffect, useLayoutEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { TextureLoader, PlaneGeometry } from 'three'
 import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
+import NextUpModule from '../modules/NextUpModule'
 import SiteHeader from '../modules/SiteHeader'
 import BackButton from '../components/BackButton'
 import { useViewportWidth } from '../hooks/useViewportWidth'
@@ -169,6 +170,15 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     }
   }, [])
 
+  // Scroll to top when navigating to a new venue (after loader fade-in completes)
+  useEffect(() => {
+    // Loader fade-in is 450ms, scroll after it's fully opaque
+    const scrollTimer = setTimeout(() => {
+      window.scrollTo(0, 0)
+    }, 500)
+    return () => clearTimeout(scrollTimer)
+  }, [slug])
+
   useEffect(() => {
     // Lock scroll while loader is active
     if (showHeroLoader) {
@@ -186,6 +196,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     setHeroArtReady(false)
     setHeroLineReady(false)
     setAllowLineAnimation(false)
+    setHeroVisible(false)
 
     if (loaderTimeoutRef.current) {
       clearTimeout(loaderTimeoutRef.current)
@@ -332,6 +343,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     color: '#fff',
     position: 'relative',
     paddingBottom: '60px',
+    visibility: heroLoaderRendered ? 'hidden' : 'visible',
   }
 
   const heroArtStageStyle = {
@@ -368,7 +380,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
             position: 'fixed',
             inset: 0,
             zIndex: Z_INDEX.VENUE_LOADER,
-            background: 'rgba(3,3,3,0.95)',
+            background: COLORS.BACKGROUND_DARK,
             opacity: showHeroLoader ? 1 : 0,
             transition: 'opacity 0.45s ease',
             display: 'flex',
@@ -408,6 +420,8 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
       {venue.gallery && venue.gallery.length > 0 && (
         <VenueGalleryModule images={venue.gallery} />
       )}
+
+      <NextUpModule currentSlug={slug} venues={mapPoints} />
     </main>
   )
 }
@@ -486,7 +500,31 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
   const fallbackRef = useRef(null)
   const containerRef = innerRef || fallbackRef
 
-  useEffect(() => {
+  // Pre-set stroke-dasharray/dashoffset when markup changes (before shouldAnimate is true)
+  // This ensures strokes are in their hidden state when the container becomes visible
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return
+    const container = containerRef.current
+    if (!container) return
+    const svg = container.querySelector('svg')
+    if (!svg) return
+
+    const drawables = Array.from(svg.querySelectorAll('path, line, polyline, polygon'))
+    drawables.forEach((el) => {
+      // Get stroke length for dasharray
+      const rawLength = getDrawableLength(el)
+      const length = Number.isFinite(rawLength) && rawLength > 0 ? rawLength : 1000
+
+      // Pre-set to hidden state (dashoffset = full length means stroke is invisible)
+      el.style.strokeDasharray = `${length}`
+      el.style.strokeDashoffset = `${length}`
+      el.style.opacity = '0'
+    })
+  }, [markup]) // Only depends on markup - runs before shouldAnimate becomes true
+
+  // useLayoutEffect ensures animation styles are applied BEFORE browser paint,
+  // preventing flash of fully-drawn lines during page transitions
+  useLayoutEffect(() => {
     if (typeof document === 'undefined') return undefined
     ensureHeroSvgStyles()
     const container = containerRef.current

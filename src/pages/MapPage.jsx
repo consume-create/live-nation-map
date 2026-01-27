@@ -11,6 +11,7 @@ import CameraController from '../CameraController'
 import { US_BOUNDS } from '../usStates'
 import SiteHeader from '../modules/SiteHeader'
 import MobileMapView from '../components/MobileMapView'
+import LiveNationLogo from '../components/LiveNationLogo'
 import { BREAKPOINTS, ANIMATIONS, SPACING, CAMERA, COLORS } from '../constants/theme'
 
 function generateKey(point, idx) {
@@ -98,6 +99,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const [pendingSlug, setPendingSlug] = useState(null)
   const [showSplash, setShowSplash] = useState(true)
   const [splashOpacity, setSplashOpacity] = useState(0)
+  const [mapOpacity, setMapOpacity] = useState(0)
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight,
@@ -109,14 +111,15 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   const navTimeoutRef = useRef(null)
 
   useEffect(() => {
-    // Fade in immediately
+    // Fade in splash immediately
     const fadeInTimer = setTimeout(() => {
       setSplashOpacity(1)
     }, 50)
 
-    // Start fade out after splash duration
+    // Start fade out splash and fade in map simultaneously
     const fadeOutTimer = setTimeout(() => {
       setSplashOpacity(0)
+      setMapOpacity(1)
     }, ANIMATIONS.SPLASH_DURATION)
 
     // Remove splash after fade out completes
@@ -256,7 +259,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
 
   const minWorldDistance = useMemo(() => {
     const widthRatio = US_BOUNDS.width / Math.max(viewport.width, 320)
-    return Math.max(8, 18 * widthRatio)
+    return Math.max(16, 28 * widthRatio)
   }, [viewport.width])
 
   const spacedPoints = useMemo(
@@ -270,46 +273,100 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
   )
 
   if (showTester) {
-    return <ShaderTester onExit={() => setShowTester(false)} />
-  }
-
-  if (showSplash) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          alignItems: 'flex-end',
-          justifyContent: 'flex-start',
-          zIndex: 9999,
-          opacity: splashOpacity,
-          transition: 'opacity 500ms ease-in-out',
-        }}
-      >
-        <img
-          src={`${import.meta.env.BASE_URL}images/live-nation-logo.svg`}
-          alt="Live Nation"
-          style={{
-            width: 'calc(100% - 40px)',
-            height: 'auto',
-            margin: '20px',
-          }}
-        />
-      </div>
-    )
+    return <ShaderTester onExit={() => setShowSplash(false)} />
   }
 
   // Mobile view with static map and accordions
   if (isMobile) {
-    return <MobileMapView mapPoints={mapPoints} />
+    return (
+      <>
+        {/* Splash overlay */}
+        {showSplash && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: '#ffffff',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'flex-start',
+              zIndex: 9999,
+              opacity: splashOpacity,
+              transition: 'opacity 600ms ease-in-out',
+              pointerEvents: splashOpacity > 0 ? 'auto' : 'none',
+            }}
+          >
+            <LiveNationLogo
+              stagger={ANIMATIONS.SPLASH_LOGO_STAGGER}
+              duration={ANIMATIONS.SPLASH_LOGO_DURATION}
+              fillColor="#1D1D1D"
+              strokeColor="#1D1D1D"
+              style={{
+                width: 'calc(100% - 40px)',
+                height: 'auto',
+                margin: '20px',
+              }}
+            />
+          </div>
+        )}
+        {/* Map content - renders behind splash */}
+        <div
+          style={{
+            opacity: mapOpacity,
+            transition: 'opacity 800ms ease-out',
+          }}
+        >
+          <MobileMapView mapPoints={mapPoints} />
+        </div>
+      </>
+    )
   }
 
   // Desktop 3D view
   return (
-    <div style={{ width: '100vw', height: '100vh', background: COLORS.BACKGROUND_DARK, position: 'relative', overflow: 'hidden' }}>
-      <SiteHeader />
+    <>
+      {/* Splash overlay */}
+      {showSplash && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-start',
+            zIndex: 9999,
+            opacity: splashOpacity,
+            transition: 'opacity 600ms ease-in-out',
+            pointerEvents: splashOpacity > 0 ? 'auto' : 'none',
+          }}
+        >
+          <LiveNationLogo
+            stagger={ANIMATIONS.SPLASH_LOGO_STAGGER}
+            duration={ANIMATIONS.SPLASH_LOGO_DURATION}
+            fillColor="#1D1D1D"
+            strokeColor="#1D1D1D"
+            style={{
+              width: 'calc(100% - 40px)',
+              height: 'auto',
+              margin: '20px',
+            }}
+          />
+        </div>
+      )}
+      {/* Map content - renders behind splash */}
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          background: COLORS.BACKGROUND_DARK,
+          position: 'relative',
+          overflow: 'hidden',
+          opacity: mapOpacity,
+          transition: 'opacity 800ms ease-out',
+        }}
+      >
+        <SiteHeader />
       <div
         style={{
           position: 'absolute',
@@ -427,6 +484,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
         />
       </div>
     </div>
+    </>
   )
 }
 

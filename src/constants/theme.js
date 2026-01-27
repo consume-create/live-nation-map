@@ -48,9 +48,16 @@ export const ANIMATIONS = {
   MS_500: 500,
   MS_1000: 1000,
   MS_2000: 2000,
-  SPLASH_DURATION: 2000,
-  SPLASH_REMOVAL: 2600,
+  // Logo animation: 10 letters × 0.07s stagger + 0.5s duration = ~1.2s
+  // Add buffer for completion + hold time before fade
+  SPLASH_LOGO_STAGGER: 0.07,
+  SPLASH_LOGO_DURATION: 0.5,
+  SPLASH_ANIMATION_TIME: 1500, // Total animation time with buffer
+  SPLASH_HOLD_TIME: 800, // Hold after animation completes
+  SPLASH_DURATION: 2300, // Animation + hold before fade starts
+  SPLASH_REMOVAL: 2900, // Duration + 600ms fade out
   SPLASH_FADE_IN_MS: 50,
+  MAP_FADE_IN_MS: 800, // Smooth fade-in for map after splash
   HERO_LOADER_MIN_MS: 1500,
   HERO_REVEAL_FADE_MS: 500,
 }

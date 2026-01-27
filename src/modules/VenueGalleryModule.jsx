@@ -6,37 +6,41 @@ import { BREAKPOINTS, COLORS } from '../constants/theme'
 const DEFAULT_IMAGE_ASPECT = 4 / 3
 const LABEL_HEIGHT = 32
 
-// Scattered positions - 2-3 per row, 24-38% widths, generous vertical spacing
+// Scattered positions - 2-3 per row, 32-48% widths, generous vertical spacing
 const SCATTER_LAYOUTS = [
   // Row 1 - two images
-  { top: 0, left: '4%', width: '32%', labelPosition: 'right' },
-  { top: 40, left: '54%', width: '28%', labelPosition: 'left' },
+  { top: 0, left: '2%', width: '42%', labelPosition: 'right' },
+  { top: 40, left: '52%', width: '36%', labelPosition: 'left' },
   // Row 2 - three images staggered
-  { top: 620, left: '0%', width: '26%', labelPosition: 'right' },
-  { top: 680, left: '38%', width: '24%', labelPosition: 'left' },
-  { top: 640, left: '70%', width: '28%', labelPosition: 'left' },
+  { top: 620, left: '0%', width: '34%', labelPosition: 'right' },
+  { top: 680, left: '38%', width: '32%', labelPosition: 'left' },
+  { top: 640, left: '72%', width: '26%', labelPosition: 'left' },
   // Row 3 - two images
-  { top: 1200, left: '10%', width: '36%', labelPosition: 'left' },
-  { top: 1260, left: '58%', width: '28%', labelPosition: 'right' },
+  { top: 1200, left: '6%', width: '46%', labelPosition: 'left' },
+  { top: 1260, left: '58%', width: '38%', labelPosition: 'right' },
   // Row 4 - three images
-  { top: 1850, left: '2%', width: '28%', labelPosition: 'right' },
-  { top: 1900, left: '42%', width: '24%', labelPosition: 'left' },
-  { top: 1870, left: '74%', width: '24%', labelPosition: 'left' },
+  { top: 1850, left: '0%', width: '38%', labelPosition: 'right' },
+  { top: 1900, left: '42%', width: '32%', labelPosition: 'left' },
+  { top: 1870, left: '76%', width: '22%', labelPosition: 'left' },
   // Row 5 - two images
-  { top: 2480, left: '14%', width: '34%', labelPosition: 'left' },
-  { top: 2520, left: '58%', width: '28%', labelPosition: 'right' },
+  { top: 2480, left: '8%', width: '44%', labelPosition: 'left' },
+  { top: 2520, left: '58%', width: '38%', labelPosition: 'right' },
 ]
 
-// Mobile layout - staggered smaller widths
+// Mobile layout - randomized widths (60-90%)
 const MOBILE_LAYOUTS = [
-  { width: '52%', align: 'flex-start', labelPosition: 'left' },
-  { width: '48%', align: 'flex-end', labelPosition: 'right' },
-  { width: '55%', align: 'flex-start', labelPosition: 'left' },
-  { width: '45%', align: 'flex-end', labelPosition: 'right' },
-  { width: '50%', align: 'flex-start', labelPosition: 'left' },
-  { width: '52%', align: 'flex-end', labelPosition: 'right' },
-  { width: '48%', align: 'flex-start', labelPosition: 'left' },
-  { width: '50%', align: 'flex-end', labelPosition: 'right' },
+  { width: '75%', align: 'flex-start', labelPosition: 'left' },
+  { width: '62%', align: 'flex-end', labelPosition: 'right' },
+  { width: '88%', align: 'flex-start', labelPosition: 'left' },
+  { width: '60%', align: 'flex-end', labelPosition: 'right' },
+  { width: '68%', align: 'flex-start', labelPosition: 'left' },
+  { width: '90%', align: 'flex-end', labelPosition: 'right' },
+  { width: '65%', align: 'flex-start', labelPosition: 'left' },
+  { width: '82%', align: 'flex-end', labelPosition: 'right' },
+  { width: '70%', align: 'flex-start', labelPosition: 'left' },
+  { width: '72%', align: 'flex-end', labelPosition: 'right' },
+  { width: '85%', align: 'flex-start', labelPosition: 'left' },
+  { width: '78%', align: 'flex-end', labelPosition: 'right' },
 ]
 
 function getAspectRatio(item) {
