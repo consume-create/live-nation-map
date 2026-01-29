@@ -13,6 +13,12 @@ const mapPointsQuery = groq`
     city,
     region,
     location,
+    description,
+    seo{
+      metaTitle,
+      metaDescription,
+      "socialShareImageUrl": socialShareImage.asset->url
+    },
     "heroImage": heroImage{
       asset->{
         _id, url,
@@ -109,6 +115,8 @@ function mapToRenderable(point) {
     },
     gallery: normaliseGallery(point.gallery),
     aboutModule: point.aboutModule || null,
+    description: point.description || null,
+    seo: point.seo || null,
   }
 }
 
@@ -124,5 +132,35 @@ export async function fetchMapPoints() {
   } catch (error) {
     console.warn('Failed to fetch Sanity map points.', error)
     return []
+  }
+}
+
+const siteSettingsQuery = groq`
+  *[_type == "siteSettings"][0]{
+    siteTitle,
+    siteDescription,
+    "socialShareImageUrl": socialShareImage.asset->url,
+    "mobileMapImage": mobileMapImage{
+      asset->{
+        _id, url,
+        metadata{ lqip, dimensions{ width, height, aspectRatio } }
+      }
+    },
+    "mobileMapImageUrl": mobileMapImage.asset->url
+  }
+`
+
+export async function fetchSiteSettings() {
+  if (!isSanityConfigured) {
+    console.warn('Sanity client not configured; site settings unavailable.')
+    return null
+  }
+
+  try {
+    const data = await sanityClient.fetch(siteSettingsQuery)
+    return data
+  } catch (error) {
+    console.warn('Failed to fetch Sanity site settings.', error)
+    return null
   }
 }

@@ -52,7 +52,6 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
         width: '100%',
         padding: isMobile ? '80px 24px' : '120px clamp(32px, 6vw, 160px)',
         backgroundColor: COLORS.BACKGROUND_DARK,
-        borderTop: `1px solid ${COLORS.BORDER_WHITE_08}`,
         display: 'flex',
         justifyContent: 'center',
       }}

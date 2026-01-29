@@ -90,7 +90,7 @@ function resolveSpacedPoints(points, minDistance) {
   })
 }
 
-export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
+export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSettings }) {
   const navigate = useNavigate()
   const [selectedSlug, setSelectedSlug] = useState(null)
   const [showTester, setShowTester] = useState(false)
@@ -316,7 +316,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError }) {
             transition: 'opacity 800ms ease-out',
           }}
         >
-          <MobileMapView mapPoints={mapPoints} />
+          <MobileMapView mapPoints={mapPoints} mobileMapImage={siteSettings?.mobileMapImage} />
         </div>
       </>
     )

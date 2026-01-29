@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react'
 import { urlFor } from '../lib/imageUrl'
 
-const DEFAULT_WIDTHS = [400, 800, 1200, 1600, 2000]
-const DEFAULT_QUALITY = 80
+// Include larger sizes for retina displays (2x, 3x DPR)
+const DEFAULT_WIDTHS = [400, 800, 1200, 1600, 2000, 2400, 3000]
+const DEFAULT_QUALITY = 85
 
 function buildSrcSet(image, widths, maxWidth) {
   const capped = maxWidth
@@ -18,7 +19,8 @@ function buildSrcSet(image, widths, maxWidth) {
 }
 
 function buildSrc(image, width) {
-  return urlFor(image).width(width || 1200).quality(DEFAULT_QUALITY).auto('format').url()
+  // Fallback src for browsers without srcset - use larger size for retina
+  return urlFor(image).width(width || 1600).quality(DEFAULT_QUALITY).auto('format').url()
 }
 
 export default function ResponsiveImage({
@@ -81,9 +83,10 @@ export default function ResponsiveImage({
   }
 
   // For non-GIFs, use srcSet with auto format optimization
-  const maxWidth = width || originalWidth || 2000
+  // Allow larger maxWidth to support retina displays
+  const maxWidth = width || originalWidth || 3000
   const srcSet = buildSrcSet(image, DEFAULT_WIDTHS, maxWidth)
-  const src = buildSrc(image, Math.min(1200, maxWidth))
+  const src = buildSrc(image, Math.min(1600, maxWidth))
 
   return (
     <div

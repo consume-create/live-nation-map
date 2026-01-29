@@ -4,17 +4,24 @@ export default defineType({
   name: 'mapPoint',
   title: 'Map Point',
   type: 'document',
+  groups: [
+    { name: 'main', title: 'Main Info', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'seo', title: 'SEO & Social' },
+  ],
   fields: [
     defineField({
       name: 'title',
       title: 'Title',
       type: 'string',
+      group: 'main',
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
+      group: 'main',
       options: {
         source: 'title',
         maxLength: 96,
@@ -25,6 +32,7 @@ export default defineType({
       name: 'state',
       title: 'State',
       type: 'string',
+      group: 'main',
       options: {
         list: [
           { title: 'Alabama', value: 'Alabama' },
@@ -83,11 +91,13 @@ export default defineType({
       name: 'city',
       title: 'City',
       type: 'string',
+      group: 'main',
     }),
     defineField({
       name: 'region',
       title: 'Region',
       type: 'string',
+      group: 'main',
       options: {
         list: [
           { title: 'West', value: 'west' },
@@ -101,12 +111,14 @@ export default defineType({
       name: 'location',
       title: 'Map Location',
       type: 'geopoint',
+      group: 'main',
       validation: (rule) => rule.required(),
     }),
     defineField({
       name: 'heroImage',
       title: 'Venue Hero Image',
       type: 'image',
+      group: 'media',
       options: {
         hotspot: true,
       },
@@ -116,6 +128,7 @@ export default defineType({
       name: 'heroLineAnimation',
       title: 'Hero Line Animation SVG',
       type: 'image',
+      group: 'media',
       options: {
         accept: '.svg',
       },
@@ -125,6 +138,7 @@ export default defineType({
       name: 'logoTexture',
       title: 'Flashlight Logo',
       type: 'image',
+      group: 'media',
       options: {
         hotspot: true,
       },
@@ -133,6 +147,7 @@ export default defineType({
       name: 'gallery',
       title: 'Gallery Images',
       type: 'array',
+      group: 'media',
       of: [
         defineField({
           name: 'galleryItem',
@@ -175,6 +190,7 @@ export default defineType({
       name: 'aboutModule',
       title: 'About Module',
       type: 'object',
+      group: 'media',
       fields: [
         defineField({
           name: 'video',
@@ -233,6 +249,44 @@ export default defineType({
               ],
             }),
           ],
+        }),
+      ],
+    }),
+    defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'text',
+      rows: 3,
+      group: 'seo',
+      description: 'Short venue description. Used as meta description if SEO description not set.',
+    }),
+    defineField({
+      name: 'seo',
+      title: 'SEO Overrides',
+      type: 'object',
+      group: 'seo',
+      options: { collapsible: true, collapsed: true },
+      fields: [
+        defineField({
+          name: 'metaTitle',
+          title: 'Meta Title Override',
+          type: 'string',
+          description: 'Custom page title. Leave blank for default: "Venue Name | Live Nation"',
+        }),
+        defineField({
+          name: 'metaDescription',
+          title: 'Meta Description Override',
+          type: 'text',
+          rows: 3,
+          description: 'Custom meta description (150-160 chars recommended). Falls back to Description field.',
+          validation: (rule) => rule.max(200),
+        }),
+        defineField({
+          name: 'socialShareImage',
+          title: 'Social Share Image',
+          type: 'image',
+          description: 'Custom og:image. Falls back to Hero Image. Recommended: 1200x630px.',
+          options: { hotspot: true },
         }),
       ],
     }),

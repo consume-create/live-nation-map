@@ -10,6 +10,7 @@ import SiteHeader from '../modules/SiteHeader'
 import BackButton from '../components/BackButton'
 import { useViewportWidth } from '../hooks/useViewportWidth'
 import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS, CAMERA } from '../constants/theme'
+import { updateVenueSEO, resetToSiteSEO } from '../App'
 
 let heroSvgStylesInjected = false
 function ensureHeroSvgStyles() {
@@ -111,7 +112,7 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
 
 const HERO_REVEAL_SLIDE_MS = 0 // Delay before starting reveal animation
 
-export default function VenuePage({ mapPoints, pointsLoading }) {
+export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const { slug } = useParams()
   const viewportWidth = useViewportWidth()
   const [heroSvgMarkup, setHeroSvgMarkup] = useState(null)
@@ -148,15 +149,16 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
     return mapPoints.find((point) => point.slug === slug) || null
   }, [mapPoints, slug])
 
-  // Dynamic page title for SEO
+  // Update SEO meta tags for this venue
   useEffect(() => {
-    if (venue?.title) {
-      document.title = `${venue.title} | Live Nation`
+    if (venue) {
+      updateVenueSEO(venue, siteSettings)
     }
     return () => {
-      document.title = 'Live Nation Venue Map'
+      // Reset to site-level SEO on unmount
+      resetToSiteSEO(siteSettings)
     }
-  }, [venue?.title])
+  }, [venue, siteSettings])
 
   const heroUrl = venue?.heroImageUrl || null
   const heroLineSvgUrl = venue?.heroLineSvgUrl || null
@@ -403,6 +405,7 @@ export default function VenuePage({ mapPoints, pointsLoading }) {
         {heroArtReady && heroSvgMarkup && (
           <div style={heroArtStageStyle}>
             <HeroArtLayers
+              key={venue.slug}
               markup={heroSvgMarkup}
               lineMarkup={heroLineSvgMarkup}
               stageStyle={heroArtStageStyle}
@@ -460,6 +463,7 @@ function HeroArtLayers({ markup, lineMarkup, stageStyle, venueSlug, heroVisible,
       />
       {lineMarkup && (
         <HeroSVGAnimator
+          key={venueSlug}
           markup={lineMarkup}
           venueSlug={venueSlug}
           innerRef={lineRef}
@@ -582,6 +586,8 @@ function HeroSVGAnimator({ markup, accelerate = true, venueSlug, innerRef, shoul
       drawables.forEach((el) => {
         el.style.animation = 'none'
         el.style.strokeDashoffset = el.style.strokeDasharray || el.style.strokeDashoffset
+        // Force browser reflow to ensure animation restarts cleanly
+        void el.offsetWidth
       })
       drawables.forEach((el, idx) => {
         el.style.animation = `hero-svg-draw ${duration}s ease-out forwards`

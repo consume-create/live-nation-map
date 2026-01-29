@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import SiteHeader from '../modules/SiteHeader'
 import RegionAccordion from './RegionAccordion'
+import ResponsiveImage from './ResponsiveImage'
 import { COLORS, GRID_BACKGROUND } from '../constants/theme'
 
-export default function MobileMapView({ mapPoints = [] }) {
+export default function MobileMapView({ mapPoints = [], mobileMapImage }) {
   // Group venues by region
   const grouped = useMemo(() => {
     const result = {
@@ -51,17 +52,26 @@ export default function MobileMapView({ mapPoints = [] }) {
         Live Nation Venue Map
       </h1>
 
-      {/* Static map image */}
+      {/* Map image - dynamic from Sanity with static fallback */}
       <div style={{ width: '100%', padding: '20px 20px 40px', paddingTop: '120px' }}>
-        <img
-          src={`${import.meta.env.BASE_URL}images/mobile-map.png`}
-          alt="Interactive map of Live Nation venues across the United States"
-          style={{
-            width: '100%',
-            height: 'auto',
-            display: 'block',
-          }}
-        />
+        {mobileMapImage?.asset ? (
+          <ResponsiveImage
+            image={mobileMapImage}
+            alt="Interactive map of Live Nation venues across the United States"
+            sizes="(max-width: 768px) 100vw, 768px"
+            priority
+          />
+        ) : (
+          <img
+            src={`${import.meta.env.BASE_URL}images/mobile-map.png`}
+            alt="Interactive map of Live Nation venues across the United States"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block',
+            }}
+          />
+        )}
       </div>
 
       {/* Region accordions */}

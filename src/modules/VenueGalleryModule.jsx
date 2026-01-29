@@ -207,7 +207,7 @@ export default function VenueGalleryModule({ images = [] }) {
                       image={item.image}
                       alt={label}
                       aspectRatio={aspectRatio}
-                      sizes="(max-width: 900px) 55vw, 22vw"
+                      sizes="(max-width: 900px) 85vw, 50vw"
                     />
                   ) : (
                     <div
