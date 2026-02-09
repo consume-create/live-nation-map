@@ -21,6 +21,7 @@ function renderList(title, entries = [], isMobile = false) {
       display: isMobile ? 'flex' : 'block',
       gap: isMobile ? 40 : 0,
       alignItems: 'flex-start',
+      minWidth: 0,
     }}>
       <h3
         style={{
@@ -41,7 +42,7 @@ function renderList(title, entries = [], isMobile = false) {
           title
         )}
       </h3>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: '#fff', display: 'flex', flexDirection: 'column', gap: isMobile ? 24 : 18 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: '#fff', display: 'flex', flexDirection: 'column', gap: isMobile ? 24 : 18, minWidth: 0, overflow: 'hidden' }}>
         {entries.map((item, idx) => {
           const entry = typeof item === 'string' ? { name: item } : item
           return (
@@ -205,6 +206,7 @@ export default function VenueAboutModule({ about = {} }) {
         backgroundImage: ABOUT_GRID_BACKGROUND,
         backgroundSize: '80px 80px',
         color: COLORS.TEXT_WHITE,
+        overflow: 'hidden',
       }}
     >
       <div

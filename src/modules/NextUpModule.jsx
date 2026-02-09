@@ -54,6 +54,7 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
         backgroundColor: COLORS.BACKGROUND_DARK,
         display: 'flex',
         justifyContent: 'center',
+        overflow: 'hidden',
       }}
     >
       <Link
@@ -62,6 +63,7 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
           display: 'inline-flex',
           flexDirection: 'column',
           alignItems: 'stretch',
+          maxWidth: '100%',
           textDecoration: 'none',
           color: COLORS.TEXT_WHITE,
         }}

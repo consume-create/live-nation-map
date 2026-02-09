@@ -165,10 +165,10 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
 
   useEffect(() => {
     // Ensure body can scroll for venue pages
-    document.body.style.overflow = 'auto'
+    document.body.style.overflowY = 'auto'
 
     return () => {
-      document.body.style.overflow = ''
+      document.body.style.overflowY = ''
     }
   }, [])
 
@@ -184,9 +184,9 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   useEffect(() => {
     // Lock scroll while loader is active
     if (showHeroLoader) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflowY = 'hidden'
     } else {
-      document.body.style.overflow = 'auto'
+      document.body.style.overflowY = 'auto'
     }
   }, [showHeroLoader])
 
