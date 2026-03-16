@@ -51,6 +51,9 @@ export default function CameraController({ targetPosition, onComplete }) {
     }
   }, [targetPosition, camera, controls])
 
+  const tempTarget = useRef(new THREE.Vector3())
+  const tempOffset = useRef(new THREE.Vector3())
+
   useFrame((state, delta) => {
     if (!isAnimating.current || !targetRef.current) return
 
@@ -65,31 +68,21 @@ export default function CameraController({ targetPosition, onComplete }) {
     // Smooth easing function
     const t = easeInOutCubic(progress.current)
 
-    // Interpolate the look-at target from start to end
-    const currentTarget = new THREE.Vector3().lerpVectors(
-      startTarget.current,
-      targetRef.current,
-      t
-    )
+    // Interpolate the look-at target from start to end (reuse temp vectors)
+    tempTarget.current.lerpVectors(startTarget.current, targetRef.current, t)
 
     // Interpolate the offset from target to camera
-    // This ensures smooth transition from current view to zoomed view
-    const currentOffset = new THREE.Vector3().lerpVectors(
-      startOffset.current,
-      endOffset.current,
-      t
-    )
+    tempOffset.current.lerpVectors(startOffset.current, endOffset.current, t)
 
     // Camera position = current target + current offset
-    const newPosition = currentTarget.clone().add(currentOffset)
-    camera.position.copy(newPosition)
+    camera.position.copy(tempTarget.current).add(tempOffset.current)
 
     // Update controls target
     if (controls) {
-      controls.target.copy(currentTarget)
+      controls.target.copy(tempTarget.current)
       controls.update()
     } else {
-      camera.lookAt(currentTarget)
+      camera.lookAt(tempTarget.current)
     }
   })
 

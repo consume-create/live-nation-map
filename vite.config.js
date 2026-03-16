@@ -20,4 +20,16 @@ export default defineConfig({
   ],
   base: '/map/',
   assetsInclude: ['**/*.glsl'],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          lottie: ['lottie-react', 'lottie-web'],
+          gsap: ['gsap'],
+        },
+      },
+    },
+  },
 })

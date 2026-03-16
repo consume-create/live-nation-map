@@ -70,7 +70,7 @@ export default function FlashlightPlane({
     const phaseTime = elapsed * speed
 
     const sweepPhase = params.pingPong
-      ? 0.5 * (Math.sin(phaseTime * Math.PI * 2.0) + 1.0)
+      ? 0.5 * (Math.sin(phaseTime * Math.PI * 2.0 - Math.PI / 2) + 1.0)
       : phaseTime - Math.floor(phaseTime)
 
     const minX = MathUtils.clamp(Math.min(params.sweepMin, params.sweepMax), 0, 1)

@@ -2,7 +2,23 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import useScrollDirection from '../hooks/useScrollDirection'
 import { useViewportWidth } from '../hooks/useViewportWidth'
-import { BREAKPOINTS, ANIMATIONS, Z_INDEX } from '../constants/theme'
+import { BREAKPOINTS, ANIMATIONS, Z_INDEX, COLORS } from '../constants/theme'
+
+function BackArrowIcon({ size = 20 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+      style={{ transform: 'scaleX(-1)', flexShrink: 0 }}
+    >
+      <path d="M0 0.5H19.1888V19.9075" stroke="currentColor" />
+      <path d="M19.1886 0.5L0.68515 19.2143" stroke="currentColor" />
+    </svg>
+  )
+}
 
 export default function BackButton() {
   const navigate = useNavigate()
@@ -36,7 +52,17 @@ export default function BackButton() {
   const hidden = scrollDirection === 'down'
 
   const handleClick = () => {
-    navigate('/')
+    document.body.style.transition = 'opacity 0.3s ease'
+    document.body.style.opacity = '0'
+    setTimeout(() => {
+      window.scrollTo({ top: 0 })
+      navigate('/')
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          document.body.style.opacity = '1'
+        })
+      }, 100)
+    }, 350)
   }
 
   // When header visible: position directly below header
@@ -56,54 +82,70 @@ export default function BackButton() {
     transition: `top ${ANIMATIONS.SLOW} ease`,
   }
 
-  const arrowStyle = {
-    width: 20,
-    height: 20,
-    transform: 'scaleX(-1)',
-    flexShrink: 0,
-  }
-
-  const textContainerStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  }
-
-  const backTextStyle = {
-    fontSize: 12,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    color: '#fff',
-    margin: 0,
-    lineHeight: 1.3,
-  }
-
-  const subTextStyle = {
-    fontSize: 12,
-    fontWeight: 500,
-    textTransform: 'uppercase',
-    color: '#ccc',
-    margin: 0,
-    lineHeight: 1.3,
-  }
-
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      style={buttonStyle}
-      aria-label="Go back to see all venues"
-    >
-      <img
-        src="/map/images/ln-arrow.svg"
-        alt=""
-        style={arrowStyle}
-        aria-hidden="true"
-      />
-      <div style={textContainerStyle}>
-        <span style={backTextStyle}>Back</span>
-        <span style={subTextStyle}>See All Venues</span>
-      </div>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        style={buttonStyle}
+        className="back-btn"
+        aria-label="Go back to see all venues"
+      >
+        <div className="back-btn-arrow">
+          <BackArrowIcon size={20} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <span
+            className="back-btn-title"
+            style={{
+              fontFamily: 'var(--font-display, "Poppins", sans-serif)',
+              fontSize: 12,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              margin: 0,
+              lineHeight: 1.3,
+            }}
+          >
+            Back
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-display, "Poppins", sans-serif)',
+              fontSize: 12,
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              color: '#ccc',
+              margin: 0,
+              lineHeight: 1.3,
+            }}
+          >
+            See All Venues
+          </span>
+        </div>
+      </button>
+      <style>
+        {`
+          .back-btn-arrow {
+            color: ${COLORS.TEXT_WHITE};
+            transition: color 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+          }
+          .back-btn-title {
+            background: linear-gradient(90deg, ${COLORS.ACCENT_RED} 50%, ${COLORS.TEXT_WHITE} 50%);
+            background-size: 200% 100%;
+            background-position: 100% 0;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: background-position 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+          }
+          .back-btn:hover .back-btn-arrow {
+            color: ${COLORS.ACCENT_RED};
+          }
+          .back-btn:hover .back-btn-title {
+            background-position: 0% 0;
+          }
+        `}
+      </style>
+    </>
   )
 }

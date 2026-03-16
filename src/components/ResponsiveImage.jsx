@@ -94,6 +94,7 @@ export default function ResponsiveImage({
         position: 'relative',
         overflow: 'hidden',
         width: '100%',
+        maxWidth: '100%',
         aspectRatio: resolvedAspect || undefined,
         backgroundColor: '#111',
         ...style,

@@ -120,7 +120,11 @@ function mapToRenderable(point) {
   }
 }
 
+let mapPointsCache = null
+
 export async function fetchMapPoints() {
+  if (mapPointsCache) return mapPointsCache
+
   if (!isSanityConfigured) {
     console.warn('Sanity client not configured; map points unavailable.')
     return []
@@ -128,7 +132,8 @@ export async function fetchMapPoints() {
 
   try {
     const data = await sanityClient.fetch(mapPointsQuery)
-    return data.map(mapToRenderable).filter(Boolean)
+    mapPointsCache = data.map(mapToRenderable).filter(Boolean)
+    return mapPointsCache
   } catch (error) {
     console.warn('Failed to fetch Sanity map points.', error)
     return []
@@ -146,11 +151,38 @@ const siteSettingsQuery = groq`
         metadata{ lqip, dimensions{ width, height, aspectRatio } }
       }
     },
-    "mobileMapImageUrl": mobileMapImage.asset->url
+    "mobileMapImageUrl": mobileMapImage.asset->url,
+    audioPlaylist[]{
+      title,
+      "url": file.asset->url
+    }
   }
 `
 
+const audioPlaylistQuery = groq`
+  *[_type == "siteSettings"][0].audioPlaylist[]{
+    title,
+    "url": file.asset->url
+  }
+`
+
+export async function fetchAudioPlaylist() {
+  if (!isSanityConfigured) return []
+
+  try {
+    const data = await sanityClient.fetch(audioPlaylistQuery)
+    return Array.isArray(data) ? data.filter((t) => t?.url) : []
+  } catch (error) {
+    console.warn('Failed to fetch audio playlist from Sanity.', error)
+    return []
+  }
+}
+
+let siteSettingsCache = null
+
 export async function fetchSiteSettings() {
+  if (siteSettingsCache) return siteSettingsCache
+
   if (!isSanityConfigured) {
     console.warn('Sanity client not configured; site settings unavailable.')
     return null
@@ -158,7 +190,8 @@ export async function fetchSiteSettings() {
 
   try {
     const data = await sanityClient.fetch(siteSettingsQuery)
-    return data
+    siteSettingsCache = data
+    return siteSettingsCache
   } catch (error) {
     console.warn('Failed to fetch Sanity site settings.', error)
     return null

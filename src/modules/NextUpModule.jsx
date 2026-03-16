@@ -1,24 +1,20 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { COLORS, BREAKPOINTS } from '../constants/theme'
 import { useViewportWidth } from '../hooks/useViewportWidth'
 
-// Up-right diagonal arrow icon
-function ArrowIcon({ size = 24 }) {
+// Up-right diagonal arrow icon — geometric bracket style
+function ArrowIcon({ size = 40 }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 40 40"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       aria-hidden="true"
     >
-      <line x1="7" y1="17" x2="17" y2="7" />
-      <polyline points="7 7 17 7 17 17" />
+      <path d="M38.8536 39.416L38.8536 1.0002L3.52672e-05 1.0002" stroke="currentColor" strokeWidth="2" />
+      <path d="M38.8536 0.999149L1.38767 38.043" stroke="currentColor" strokeWidth="2" />
     </svg>
   )
 }
@@ -44,13 +40,31 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
     return sorted[nextIndex]
   }, [currentSlug, venues])
 
+  const navigate = useNavigate()
+
+  const handleClick = useCallback((e) => {
+    e.preventDefault()
+    document.body.style.transition = 'opacity 0.3s ease'
+    document.body.style.opacity = '0'
+    setTimeout(() => {
+      window.scrollTo({ top: 0 })
+      navigate(`/venue/${nextVenue.slug}`)
+      // Wait for new page to mount and paint before fading in
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          document.body.style.opacity = '1'
+        })
+      }, 100)
+    }, 350)
+  }, [navigate, nextVenue])
+
   if (!nextVenue) return null
 
   return (
     <section
       style={{
         width: '100%',
-        padding: isMobile ? '80px 24px' : '120px clamp(32px, 6vw, 160px)',
+        padding: isMobile ? '80px 24px 120px' : '120px clamp(32px, 6vw, 160px)',
         backgroundColor: COLORS.BACKGROUND_DARK,
         display: 'flex',
         justifyContent: 'center',
@@ -59,10 +73,11 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
     >
       <Link
         to={`/venue/${nextVenue.slug}`}
+        onClick={handleClick}
         style={{
           display: 'inline-flex',
           flexDirection: 'column',
-          alignItems: 'stretch',
+          alignItems: 'center',
           maxWidth: '100%',
           textDecoration: 'none',
           color: COLORS.TEXT_WHITE,
@@ -82,11 +97,10 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
               alignItems: 'center',
               justifyContent: 'center',
               opacity: 0.85,
-              transition: 'opacity 0.2s ease, transform 0.2s ease',
             }}
             className="next-up-arrow"
           >
-            <ArrowIcon size={isMobile ? 28 : 36} />
+            <ArrowIcon size={isMobile ? 44 : 64} />
           </div>
 
           <div
@@ -98,6 +112,7 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
             }}
           >
             <span
+              className="next-up-title"
               style={{
                 fontFamily: 'var(--font-display, "Poppins", sans-serif)',
                 fontSize: isMobile ? 28 : 42,
@@ -127,6 +142,7 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
           style={{
             width: '100%',
             height: 1,
+            alignSelf: 'stretch',
             backgroundColor: COLORS.BORDER_WHITE_30,
             transition: 'background-color 0.2s ease',
           }}
@@ -135,9 +151,32 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
 
         <style>
           {`
+            .next-up-title {
+              background: linear-gradient(90deg, ${COLORS.ACCENT_RED} 50%, ${COLORS.TEXT_WHITE} 50%);
+              background-size: 200% 100%;
+              background-position: 100% 0;
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+              transition: background-position 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+            }
+            a:hover .next-up-title {
+              background-position: 0% 0;
+            }
+            a:active .next-up-title {
+              background-position: 0% 0;
+              transition-duration: 0s;
+            }
+            .next-up-arrow {
+              color: ${COLORS.TEXT_WHITE};
+              transition: color 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+            }
             a:hover .next-up-arrow {
-              opacity: 1;
-              transform: translate(4px, -4px);
+              color: ${COLORS.ACCENT_RED};
+            }
+            a:active .next-up-arrow {
+              color: ${COLORS.ACCENT_RED};
+              transition-duration: 0s;
             }
             a:hover .next-up-line {
               background-color: ${COLORS.TEXT_WHITE};

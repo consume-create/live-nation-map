@@ -1,10 +1,24 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, lazy, Suspense } from 'react'
 import SiteHeader from '../modules/SiteHeader'
 import RegionAccordion from './RegionAccordion'
-import ResponsiveImage from './ResponsiveImage'
 import { COLORS, GRID_BACKGROUND } from '../constants/theme'
 
-export default function MobileMapView({ mapPoints = [], mobileMapImage }) {
+const Lottie = lazy(() => import('lottie-react'))
+
+const LottiePlaceholder = (
+  <div style={{ width: '100%', aspectRatio: '329 / 206' }} />
+)
+
+export default function MobileMapView({ mapPoints = [] }) {
+  const [animationData, setAnimationData] = useState(null)
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}animations/map-hotspots.json`)
+      .then(res => res.json())
+      .then(setAnimationData)
+      .catch(() => {})
+  }, [])
+
   // Group venues by region
   const grouped = useMemo(() => {
     const result = {
@@ -52,25 +66,28 @@ export default function MobileMapView({ mapPoints = [], mobileMapImage }) {
         Live Nation Venue Map
       </h1>
 
-      {/* Map image - dynamic from Sanity with static fallback */}
-      <div style={{ width: '100%', padding: '20px 20px 40px', paddingTop: '120px' }}>
-        {mobileMapImage?.asset ? (
-          <ResponsiveImage
-            image={mobileMapImage}
-            alt="Interactive map of Live Nation venues across the United States"
-            sizes="(max-width: 768px) 100vw, 768px"
-            priority
-          />
+      {/* Animated map with pulsing venue hotspots */}
+      <div style={{
+        width: '100%',
+        padding: '0 20px',
+        paddingTop: '140px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 'calc(100vh - 260px)',
+      }}>
+        {animationData ? (
+          <Suspense fallback={LottiePlaceholder}>
+            <Lottie
+              animationData={animationData}
+              loop
+              autoplay
+              style={{ width: '100%', height: 'auto' }}
+              aria-label="Animated map of Live Nation venues across the United States"
+            />
+          </Suspense>
         ) : (
-          <img
-            src={`${import.meta.env.BASE_URL}images/mobile-map.png`}
-            alt="Interactive map of Live Nation venues across the United States"
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block',
-            }}
-          />
+          LottiePlaceholder
         )}
       </div>
 

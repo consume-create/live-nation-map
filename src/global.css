@@ -1,5 +1,12 @@
 @import url("https://use.typekit.net/acz6yaf.css");
 
+/* Ensure text is visible immediately with fallback font while Poppins loads */
+@font-face {
+  font-family: "poppins";
+  font-display: swap;
+  src: local("poppins");
+}
+
 :root {
   --font-display: "poppins", "Helvetica Neue", Arial, sans-serif;
   --font-body: "poppins", "Helvetica Neue", Arial, sans-serif;
@@ -21,6 +28,14 @@ body {
   background-color: var(--color-background);
   color: var(--color-text);
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
 }
 
 h1,

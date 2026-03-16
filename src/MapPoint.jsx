@@ -3,13 +3,37 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MAP_POINT } from './constants/theme'
 
-export default function MapPoint({ position, label, onClick, selected = false, onProject }) {
+function easeOutQuart(t) {
+  return 1 - (1 - t) ** 4
+}
+
+export default function MapPoint({
+  position,
+  label,
+  onClick,
+  selected = false,
+  onProject,
+  onHover,
+  staggerIndex = 0,
+  revealStartTime = null,
+}) {
   const [hovered, setHovered] = useState(false)
   const groupRef = useRef()
+  const currentScaleRef = useRef(MAP_POINT.SCALE_IDLE)
   const tempVec = useMemo(() => new THREE.Vector3(), [])
   const { size, camera } = useThree()
 
-  const { OUTER_RADIUS, MIDDLE_RADIUS, INNER_RADIUS, HIT_AREA_RADIUS, SCALE_IDLE, SCALE_ACTIVE, Z_OFFSET } = MAP_POINT
+  const {
+    OUTER_RADIUS,
+    MIDDLE_RADIUS,
+    INNER_RADIUS,
+    HIT_AREA_RADIUS,
+    SCALE_IDLE,
+    SCALE_ACTIVE,
+    Z_OFFSET,
+    STAGGER_MS,
+    ENTER_DURATION_MS,
+  } = MAP_POINT
 
   const outerRingGeometry = useMemo(() => new THREE.RingGeometry(OUTER_RADIUS - 1.2, OUTER_RADIUS, 64), [OUTER_RADIUS])
   const middleRingGeometry = useMemo(() => new THREE.RingGeometry(MIDDLE_RADIUS - 1.1, MIDDLE_RADIUS, 64), [MIDDLE_RADIUS])
@@ -29,6 +53,34 @@ export default function MapPoint({ position, label, onClick, selected = false, o
   }, [onClick])
 
   useFrame(() => {
+    if (!groupRef.current) return
+
+    let entranceScale = 0
+    if (revealStartTime != null) {
+      const now = performance.now()
+      const start = revealStartTime + staggerIndex * STAGGER_MS
+      const t = now - start
+      if (t < 0) {
+        entranceScale = 0
+      } else if (t < ENTER_DURATION_MS) {
+        const progress = t / ENTER_DURATION_MS
+        entranceScale = easeOutQuart(progress)
+      } else {
+        entranceScale = 1
+      }
+    }
+
+    const pulse = isActive ? 0 : Math.sin(performance.now() * 0.003 + staggerIndex * 0.5) * 0.04
+    const targetScale = entranceScale * (isActive ? SCALE_ACTIVE : SCALE_IDLE + pulse)
+    currentScaleRef.current = THREE.MathUtils.lerp(
+      currentScaleRef.current,
+      targetScale,
+      0.15
+    )
+    groupRef.current.scale.setScalar(currentScaleRef.current)
+  })
+
+  useFrame(() => {
     if (!selected || !onProject || !groupRef.current) return
 
     groupRef.current.getWorldPosition(tempVec)
@@ -46,7 +98,7 @@ export default function MapPoint({ position, label, onClick, selected = false, o
 
   return (
     <group rotation={[Math.PI, 0, 0]} position={[position[0], position[1], Z_OFFSET]}>
-      <group ref={groupRef} scale={isActive ? SCALE_ACTIVE : SCALE_IDLE}>
+      <group ref={groupRef}>
         <mesh geometry={outerRingGeometry} position={[0, 0, 0]}>
           <meshBasicMaterial
             transparent
@@ -80,8 +132,8 @@ export default function MapPoint({ position, label, onClick, selected = false, o
         <mesh
           geometry={hitAreaGeometry}
           position={[0, 0, 0.6]}
-          onPointerOver={() => setHovered(true)}
-          onPointerOut={() => setHovered(false)}
+          onPointerOver={() => { setHovered(true); onHover?.(true) }}
+          onPointerOut={() => { setHovered(false); onHover?.(false) }}
           onClick={handleClick}
         >
           <meshBasicMaterial
