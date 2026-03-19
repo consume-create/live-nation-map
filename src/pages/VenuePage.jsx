@@ -110,7 +110,7 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
   }
 }
 
-const HERO_REVEAL_SLIDE_MS = 350 // Delay to let hero fade-in before line animation starts
+const HERO_REVEAL_SLIDE_MS = 150 // Delay to let hero fade-in before line animation starts
 
 export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const { slug } = useParams()
