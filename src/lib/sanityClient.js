@@ -16,10 +16,12 @@ const customFetch =
         if (url && url.startsWith('http') && !url.startsWith(window.location.origin)) {
           try {
             const parsed = new URL(url)
-            const proxyUrl = `${window.location.origin}${parsed.pathname}${parsed.search}`
-            return fetch(proxyUrl, init)
+            if (parsed.hostname.includes('sanity.io')) {
+              const proxyUrl = `${window.location.origin}${parsed.pathname}${parsed.search}`
+              return fetch(proxyUrl, init)
+            }
           } catch (_) {
-            return fetch(input, init)
+            // fall through to default fetch
           }
         }
         return fetch(input, init)

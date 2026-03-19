@@ -139,40 +139,6 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
           className="next-up-line"
         />
 
-        <style>
-          {`
-            .next-up-title {
-              background: linear-gradient(90deg, ${COLORS.ACCENT_RED} 50%, ${COLORS.TEXT_WHITE} 50%);
-              background-size: 200% 100%;
-              background-position: 100% 0;
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
-              background-clip: text;
-              transition: background-position 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-            }
-            a:hover .next-up-title {
-              background-position: 0% 0;
-            }
-            a:active .next-up-title {
-              background-position: 0% 0;
-              transition-duration: 0s;
-            }
-            .next-up-arrow {
-              color: ${COLORS.TEXT_WHITE};
-              transition: color 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-            }
-            a:hover .next-up-arrow {
-              color: ${COLORS.ACCENT_RED};
-            }
-            a:active .next-up-arrow {
-              color: ${COLORS.ACCENT_RED};
-              transition-duration: 0s;
-            }
-            a:hover .next-up-line {
-              background-color: ${COLORS.TEXT_WHITE};
-            }
-          `}
-        </style>
       </Link>
     </section>
   )

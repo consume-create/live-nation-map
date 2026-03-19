@@ -110,7 +110,7 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
   }
 }
 
-const HERO_REVEAL_SLIDE_MS = 0 // Delay before starting reveal animation
+const HERO_REVEAL_SLIDE_MS = 350 // Delay to let hero fade-in before line animation starts
 
 export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const { slug } = useParams()
@@ -119,7 +119,8 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const [heroLineSvgMarkup, setHeroLineSvgMarkup] = useState(null)
   const [heroArtReady, setHeroArtReady] = useState(false)
   const [heroLineReady, setHeroLineReady] = useState(false)
-  const [allowLineAnimation, setAllowLineAnimation] = useState(false)
+  const [lineAnimationSlug, setLineAnimationSlug] = useState(null)
+  const allowLineAnimation = lineAnimationSlug === slug
   const [showHeroLoader, setShowHeroLoader] = useState(true)
   const [heroLoaderRendered, setHeroLoaderRendered] = useState(true)
   const [heroVisible, setHeroVisible] = useState(false)
@@ -197,7 +198,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
     setHeroLineSvgMarkup(null)
     setHeroArtReady(false)
     setHeroLineReady(false)
-    setAllowLineAnimation(false)
+    setLineAnimationSlug(null)
     setHeroVisible(false)
 
     if (loaderTimeoutRef.current) {
@@ -278,9 +279,6 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
           setHeroLineSvgMarkup(lineMarkup)
           const hasLineMarkup = Boolean(lineMarkup)
           setHeroLineReady(hasLineMarkup)
-          if (!heroLoaderRendered && hasLineMarkup) {
-            setAllowLineAnimation(true)
-          }
           scheduleLoaderHide('hero art ready')
         }
       } catch (error) {
@@ -289,7 +287,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
           setHeroLineSvgMarkup(null)
           setHeroArtReady(false)
           setHeroLineReady(false)
-          setAllowLineAnimation(false)
+          setLineAnimationSlug(null)
           scheduleLoaderHide('hero art failed')
         }
       }
@@ -319,11 +317,12 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
 
   useEffect(() => {
     if (!heroVisible || !heroLineReady) return undefined
+    const currentSlug = slug
     const slideTimer = setTimeout(() => {
-      setAllowLineAnimation(true)
+      setLineAnimationSlug(currentSlug)
     }, HERO_REVEAL_SLIDE_MS)
     return () => clearTimeout(slideTimer)
-  }, [heroVisible, heroLineReady])
+  }, [heroVisible, heroLineReady, slug])
 
   if (!venue) return null
 
@@ -408,7 +407,6 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
               key={venue.slug}
               markup={heroSvgMarkup}
               lineMarkup={heroLineSvgMarkup}
-              stageStyle={heroArtStageStyle}
               venueSlug={venue.slug}
               heroVisible={heroVisible}
               shouldAnimate={allowLineAnimation && heroLineReady}
@@ -429,7 +427,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   )
 }
 
-function HeroArtLayers({ markup, lineMarkup, stageStyle, venueSlug, heroVisible, shouldAnimate }) {
+function HeroArtLayers({ markup, lineMarkup, venueSlug, heroVisible, shouldAnimate }) {
   const stageRef = useRef(null)
   const staticRef = useRef(null)
   const lineRef = useRef(null)
@@ -448,7 +446,16 @@ function HeroArtLayers({ markup, lineMarkup, stageStyle, venueSlug, heroVisible,
   }, [markup, lineMarkup])
 
   return (
-    <div ref={stageRef} style={stageStyle}>
+    <div
+      ref={stageRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        aspectRatio: '1920 / 1080',
+        overflow: 'hidden',
+      }}
+    >
       <div
         ref={staticRef}
         style={{

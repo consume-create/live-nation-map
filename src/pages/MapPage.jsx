@@ -589,6 +589,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
   const drawPhaseRef = useRef('drawing')
   const initialPathDRef = useRef(null)
   const drawCompleteTimeoutRef = useRef(null)
+  const drawCancelledRef = useRef(false)
   const drawStartScheduledRef = useRef(false)
   const drawStartedForSlugRef = useRef(null)
   const slugRef = useRef(null)
@@ -647,6 +648,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
     slugRef.current = point.slug
     // Only reset draw state when switching to a different slug (prevents double draw in Strict Mode)
     if (drawStartedForSlugRef.current === point.slug) return
+    drawCancelledRef.current = true
     drawPhaseRef.current = 'drawing'
     initialPathDRef.current = null
     drawStartScheduledRef.current = false
@@ -662,6 +664,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
     if (pathRef.current && anchor) {
       pathRef.current.setAttribute('d', `M ${anchor.x} ${anchor.y}`)
     }
+    drawCancelledRef.current = false
     drawStartedForSlugRef.current = point.slug
   }, [point?.slug])
 
@@ -706,6 +709,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
             const startTime = performance.now()
             const durationMs = CONNECTOR_DRAW_DURATION_MS
             const tick = () => {
+              if (drawCancelledRef.current) return
               const elapsed = performance.now() - startTime
               const progress = Math.min(elapsed / durationMs, 1)
               const offset = length * (1 - progress)
@@ -749,6 +753,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
     loop()
     return () => {
       cancelAnimationFrame(frame)
+      drawCancelledRef.current = true
       if (drawCompleteTimeoutRef.current != null) {
         cancelAnimationFrame(drawCompleteTimeoutRef.current)
         drawCompleteTimeoutRef.current = null
