@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { COLORS, BREAKPOINTS } from '../constants/theme'
 import { useViewportWidth } from '../hooks/useViewportWidth'
+import { navigateWithFade } from '../utils/navigateWithFade'
 
 // Up-right diagonal arrow icon — geometric bracket style
 function ArrowIcon({ size = 40 }) {
@@ -44,18 +45,7 @@ export default function NextUpModule({ currentSlug, venues = [] }) {
 
   const handleClick = useCallback((e) => {
     e.preventDefault()
-    document.body.style.transition = 'opacity 0.3s ease'
-    document.body.style.opacity = '0'
-    setTimeout(() => {
-      window.scrollTo({ top: 0 })
-      navigate(`/venue/${nextVenue.slug}`)
-      // Wait for new page to mount and paint before fading in
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          document.body.style.opacity = '1'
-        })
-      }, 100)
-    }, 350)
+    navigateWithFade(navigate, `/venue/${nextVenue.slug}`)
   }, [navigate, nextVenue])
 
   if (!nextVenue) return null

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import useScrollDirection from '../hooks/useScrollDirection'
 import { useViewportWidth } from '../hooks/useViewportWidth'
 import { BREAKPOINTS, ANIMATIONS, Z_INDEX, COLORS } from '../constants/theme'
+import { navigateWithFade } from '../utils/navigateWithFade'
 
 function BackArrowIcon({ size = 20 }) {
   return (
@@ -52,17 +53,7 @@ export default function BackButton() {
   const hidden = scrollDirection === 'down'
 
   const handleClick = () => {
-    document.body.style.transition = 'opacity 0.3s ease'
-    document.body.style.opacity = '0'
-    setTimeout(() => {
-      window.scrollTo({ top: 0 })
-      navigate('/')
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          document.body.style.opacity = '1'
-        })
-      }, 100)
-    }, 350)
+    navigateWithFade(navigate, '/')
   }
 
   // When header visible: position directly below header

@@ -2,9 +2,17 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchAudioPlaylist } from '../services/mapPoints'
 
 // ── Module-level audio singleton (persists across route changes) ──
-const audio = new Audio()
-audio.loop = false
-audio.volume = parseFloat(localStorage.getItem('ln-audio-volume') ?? '0.2')
+let audio = null
+
+function getAudio() {
+  if (!audio && typeof window !== 'undefined') {
+    audio = new Audio()
+    audio.loop = false
+    audio.volume = parseFloat(localStorage.getItem('ln-audio-volume') ?? '0.2')
+    audio.addEventListener('ended', loadNextTrack)
+  }
+  return audio
+}
 
 // trackList stores full URLs (Sanity CDN or local paths)
 let trackList = []
@@ -26,19 +34,47 @@ function shuffle(arr) {
 
 // Returns a promise that resolves when audio is ready to play
 function waitForCanPlay() {
-  return new Promise((resolve) => {
-    if (audio.readyState >= 3) return resolve()
-    const handler = () => {
-      audio.removeEventListener('canplay', handler)
+  return new Promise((resolve, reject) => {
+    const a = getAudio()
+    if (!a) return reject(new Error('no audio'))
+    if (a.readyState >= 3) return resolve()
+
+    let settled = false
+    const cleanup = () => {
+      a.removeEventListener('canplay', onReady)
+      a.removeEventListener('error', onErr)
+    }
+    const onReady = () => {
+      if (settled) return
+      settled = true
+      cleanup()
       resolve()
     }
-    audio.addEventListener('canplay', handler)
+    const onErr = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('audio load failed'))
+    }
+
+    a.addEventListener('canplay', onReady)
+    a.addEventListener('error', onErr)
+
+    // Prevent hanging forever on broken sources
+    setTimeout(() => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('audio load timeout'))
+    }, 10000)
   })
 }
 
 async function initAudio() {
   if (initialized || initializing) return initialized
   initializing = true
+  const a = getAudio()
+  if (!a) { initializing = false; return false }
 
   try {
     // Try Sanity CMS first
@@ -47,7 +83,7 @@ async function initAudio() {
     if (sanityTracks.length > 0) {
       trackList = shuffle(sanityTracks.map((t) => t.url))
       currentTrackIndex = 0
-      audio.src = trackList[0]
+      a.src = trackList[0]
       initialized = true
       initializing = false
       return true
@@ -64,7 +100,7 @@ async function initAudio() {
 
     trackList = shuffle(manifest.map((f) => `${BASE}audio/${f}`))
     currentTrackIndex = 0
-    audio.src = trackList[0]
+    a.src = trackList[0]
     initialized = true
   } catch {
     initializing = false
@@ -76,47 +112,52 @@ async function initAudio() {
 }
 
 function loadNextTrack() {
-  if (trackList.length === 0) return
+  const a = getAudio()
+  if (!a || trackList.length === 0) return
   currentTrackIndex++
   // Re-shuffle when we've played all tracks, avoiding repeat of last track
   if (currentTrackIndex >= trackList.length) {
     const lastTrack = trackList[trackList.length - 1]
+    let attempts = 0
     do {
       trackList = shuffle(trackList)
-    } while (trackList.length > 1 && trackList[0] === lastTrack)
+      attempts++
+    } while (trackList.length > 1 && trackList[0] === lastTrack && attempts < 10)
     currentTrackIndex = 0
   }
-  audio.src = trackList[currentTrackIndex]
-  waitForCanPlay().then(() => audio.play().catch(() => {}))
+  a.src = trackList[currentTrackIndex]
+  waitForCanPlay()
+    .then(() => a.play().catch(() => {}))
+    .catch(() => {}) // skip track on load failure
 }
-
-// Auto-advance when track ends
-audio.addEventListener('ended', loadNextTrack)
 
 // ── React hook ──
 export function useAudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [volume, setVolumeState] = useState(audio.volume)
+  const [volume, setVolumeState] = useState(() => getAudio()?.volume ?? 0.2)
   const [hasInteracted, setHasInteracted] = useState(false)
   const interactedRef = useRef(false)
 
   useEffect(() => {
+    const a = getAudio()
+    if (!a) return
+
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
-    const onVolume = () => setVolumeState(audio.volume)
+    const onVolume = () => setVolumeState(a.volume)
 
-    audio.addEventListener('play', onPlay)
-    audio.addEventListener('pause', onPause)
-    audio.addEventListener('volumechange', onVolume)
+    a.addEventListener('play', onPlay)
+    a.addEventListener('pause', onPause)
+    a.addEventListener('volumechange', onVolume)
 
     // Sync initial state
-    setIsPlaying(!audio.paused)
-    setVolumeState(audio.volume)
+    setIsPlaying(!a.paused)
+    setVolumeState(a.volume)
 
     return () => {
-      audio.removeEventListener('play', onPlay)
-      audio.removeEventListener('pause', onPause)
-      audio.removeEventListener('volumechange', onVolume)
+      a.removeEventListener('play', onPlay)
+      a.removeEventListener('pause', onPause)
+      a.removeEventListener('volumechange', onVolume)
     }
   }, [])
 
@@ -132,9 +173,13 @@ export function useAudioPlayer() {
     markInteracted()
     const ok = await initAudio()
     if (!ok) return
-    if (audio.paused) {
-      await waitForCanPlay()
-      try { await audio.play() } catch { /* autoplay blocked */ }
+    const a = getAudio()
+    if (!a) return
+    if (a.paused) {
+      try {
+        await waitForCanPlay()
+        await a.play()
+      } catch { /* autoplay blocked or load failed */ }
     }
   }, [markInteracted])
 
@@ -143,19 +188,25 @@ export function useAudioPlayer() {
     markInteracted()
     const ok = await initAudio()
     if (!ok) return
+    const a = getAudio()
+    if (!a) return
 
-    if (audio.paused) {
-      await waitForCanPlay()
-      try { await audio.play() } catch { /* autoplay blocked */ }
+    if (a.paused) {
+      try {
+        await waitForCanPlay()
+        await a.play()
+      } catch { /* autoplay blocked or load failed */ }
     } else {
-      audio.pause()
+      a.pause()
     }
   }, [markInteracted])
 
   const setVolume = useCallback((v) => {
     markInteracted()
+    const a = getAudio()
+    if (!a) return
     const clamped = Math.max(0, Math.min(1, v))
-    audio.volume = clamped
+    a.volume = clamped
     localStorage.setItem('ln-audio-volume', String(clamped))
   }, [markInteracted])
 

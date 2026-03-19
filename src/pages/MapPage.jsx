@@ -169,7 +169,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
     const isHovered = pinHoverCountRef.current > 0
     const el = cursorFollowerRef.current
     if (!el) return
-    const color = isHovered ? '#ffffff' : '#ff2b2b'
+    const color = isHovered ? '#ffffff' : COLORS.ACCENT_RED
     const shadow = isHovered ? '0 0 12px rgba(255,255,255,0.35)' : '0 0 12px rgba(255,0,0,0.35)'
     const inner = el.querySelector('[data-cursor-inner]')
     if (!inner) return
@@ -867,7 +867,7 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isE
               border: '1px solid #000',
               background: 'transparent',
               color: '#000',
-              fontFamily: "'poppins', sans-serif",
+              fontFamily: 'var(--font-display, "Poppins", sans-serif)',
               fontWeight: 700,
               letterSpacing: '0.12em',
               cursor: isLoading ? 'default' : 'pointer',
@@ -1016,7 +1016,7 @@ const CursorFollower = forwardRef(function CursorFollower({ active }, ref) {
             position: 'relative',
             width: '36px',
             height: '36px',
-            border: '2px solid #ff2b2b',
+            border: `2px solid ${COLORS.ACCENT_RED}`,
             borderRadius: '6px',
             display: 'flex',
             alignItems: 'center',
@@ -1031,7 +1031,7 @@ const CursorFollower = forwardRef(function CursorFollower({ active }, ref) {
               position: 'absolute',
               width: '22px',
               height: '2px',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
               transition: 'background 0.2s ease-out',
             }}
           />
@@ -1041,7 +1041,7 @@ const CursorFollower = forwardRef(function CursorFollower({ active }, ref) {
               position: 'absolute',
               width: '2px',
               height: '22px',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
               transition: 'background 0.2s ease-out',
             }}
           />
@@ -1051,7 +1051,7 @@ const CursorFollower = forwardRef(function CursorFollower({ active }, ref) {
               width: '6px',
               height: '6px',
               borderRadius: '50%',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
               transition: 'background 0.2s ease-out',
             }}
           />

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { COLORS, ANIMATIONS } from '../constants/theme'
+import { navigateWithFade } from '../utils/navigateWithFade'
 
 export default function RegionAccordion({ title, venues = [] }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -16,17 +17,7 @@ export default function RegionAccordion({ title, venues = [] }) {
   }, [venues])
 
   const handleVenueClick = (slug) => {
-    document.body.style.transition = 'opacity 0.3s ease'
-    document.body.style.opacity = '0'
-    setTimeout(() => {
-      window.scrollTo({ top: 0 })
-      navigate(`/venue/${slug}`)
-      setTimeout(() => {
-        requestAnimationFrame(() => {
-          document.body.style.opacity = '1'
-        })
-      }, 100)
-    }, 350)
+    navigateWithFade(navigate, `/venue/${slug}`)
   }
 
   return (

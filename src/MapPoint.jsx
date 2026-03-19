@@ -78,22 +78,21 @@ export default function MapPoint({
       0.15
     )
     groupRef.current.scale.setScalar(currentScaleRef.current)
-  })
 
-  useFrame(() => {
-    if (!selected || !onProject || !groupRef.current) return
+    // Project world position to screen for connector line
+    if (selected && onProject) {
+      groupRef.current.getWorldPosition(tempVec)
+      tempVec.project(camera)
 
-    groupRef.current.getWorldPosition(tempVec)
-    tempVec.project(camera)
+      const screenX = (tempVec.x * 0.5 + 0.5) * size.width
+      const screenY = (-tempVec.y * 0.5 + 0.5) * size.height
 
-    const screenX = (tempVec.x * 0.5 + 0.5) * size.width
-    const screenY = (-tempVec.y * 0.5 + 0.5) * size.height
-
-    onProject({
-      x: screenX,
-      y: screenY,
-      ndc: { x: tempVec.x, y: tempVec.y }
-    })
+      onProject({
+        x: screenX,
+        y: screenY,
+        ndc: { x: tempVec.x, y: tempVec.y }
+      })
+    }
   })
 
   return (

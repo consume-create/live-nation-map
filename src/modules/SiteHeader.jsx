@@ -5,8 +5,7 @@ import { useViewportWidth } from '../hooks/useViewportWidth'
 import { COLORS, BREAKPOINTS, Z_INDEX, ANIMATIONS } from '../constants/theme'
 import headerIconLeft from '../assets/header-icon-left.svg'
 import { useAudioPlayer } from '../hooks/useAudioPlayer'
-
-import lottie from 'lottie-web'
+import { navigateWithFade } from '../utils/navigateWithFade'
 
 const FONT = 'var(--font-display, "Poppins", sans-serif)'
 
@@ -26,18 +25,23 @@ function MusicBarsIcon({ width = 22, height = 25, animationData, isPlaying, volu
   // After interaction: animate only when playing AND volume > 0
   const shouldAnimate = !hasInteracted || (isPlaying && volume > 0)
 
-  // Create single lottie-web instance
+  // Create single lottie-web instance (dynamic import keeps it in the lottie chunk)
   useEffect(() => {
     if (!containerRef.current || !animationData) return
-    const anim = lottie.loadAnimation({
-      container: containerRef.current,
-      animationData,
-      renderer: 'svg',
-      loop: true,
-      autoplay: true,
+    let anim = null
+    let cancelled = false
+    import('lottie-web').then((mod) => {
+      if (cancelled || !containerRef.current) return
+      anim = mod.default.loadAnimation({
+        container: containerRef.current,
+        animationData,
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+      })
+      animRef.current = anim
     })
-    animRef.current = anim
-    return () => { anim.destroy(); animRef.current = null }
+    return () => { cancelled = true; anim?.destroy(); animRef.current = null }
   }, [animationData])
 
   // Play/pause based on shouldAnimate
@@ -180,17 +184,7 @@ export default function SiteHeader() {
 
   const handleLogoClick = useCallback(() => {
     if (isVenuePage) {
-      document.body.style.transition = 'opacity 0.3s ease'
-      document.body.style.opacity = '0'
-      setTimeout(() => {
-        window.scrollTo({ top: 0 })
-        navigate('/')
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            document.body.style.opacity = '1'
-          })
-        }, 100)
-      }, 350)
+      navigateWithFade(navigate, '/')
     } else {
       navigate('/')
     }
