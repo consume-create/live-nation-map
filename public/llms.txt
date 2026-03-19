@@ -1,0 +1,30 @@
+# Live Nation Venue Map
+
+> Interactive 3D venue map showcasing Live Nation properties across the United States. A Consume & Create production.
+
+## About
+
+Live Nation operates venues and properties nationwide — each one rooted in its own neighborhood, its own history, its own culture. This interactive experience features over 30 venues with immersive 3D visualization, SVG line-drawing animations, and detailed venue profiles including galleries, video content, and team information.
+
+## Features
+
+- Interactive 3D map of the United States with venue markers
+- Venue detail pages with hero SVG animations and flashlight logo reveals
+- Image galleries with staggered layouts
+- Background audio player with drag-to-adjust volume
+- Mobile-responsive with static map fallback
+- Camera fly-to animations when selecting venues
+
+## Technology
+
+Built with React 19, Three.js (React Three Fiber), and Sanity CMS. Content is managed through Sanity Studio and delivered via GROQ queries.
+
+## Navigation
+
+- Home: /map/ — Interactive 3D US map with all venue locations
+- Venue pages: /map/venue/{slug} — Individual venue profiles
+
+## Contact
+
+A Consume & Create Productions project.
+Website: https://consumeandcreate.co

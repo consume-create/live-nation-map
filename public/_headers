@@ -1,0 +1,42 @@
+# Netlify headers
+
+# HTML pages — short cache, always revalidate
+/map/*
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Hashed assets (JS/CSS) — immutable long cache
+/map/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Static files
+/map/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/map/models/*
+  Cache-Control: public, max-age=2592000
+
+/map/images/*
+  Cache-Control: public, max-age=2592000
+
+/map/animations/*
+  Cache-Control: public, max-age=2592000
+
+# SEO files
+/robots.txt
+  Cache-Control: public, max-age=86400
+  Content-Type: text/plain
+
+/sitemap.xml
+  Cache-Control: public, max-age=86400
+  Content-Type: application/xml
+
+/llms.txt
+  Cache-Control: public, max-age=86400
+  Content-Type: text/plain
+
+/.well-known/llms.txt
+  Cache-Control: public, max-age=86400
+  Content-Type: text/plain

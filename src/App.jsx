@@ -13,6 +13,20 @@ const DEFAULT_SEO = {
   siteDescription: 'Interactive 3D map of Live Nation venues across the United States. Explore over 30 venues with immersive visual experiences.',
 }
 
+const SITE_ORIGIN = 'https://consumeandcreate.co'
+
+function updateCanonical(path) {
+  const url = `${SITE_ORIGIN}${path}`
+  let link = document.querySelector('link[rel="canonical"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.setAttribute('rel', 'canonical')
+    document.head.appendChild(link)
+  }
+  link.setAttribute('href', url)
+  updateMetaTag('meta[property="og:url"]', 'content', url)
+}
+
 function updateMetaTag(selector, attribute, value) {
   const element = document.querySelector(selector)
   if (element && value) {
@@ -29,6 +43,9 @@ function updateSEO(settings) {
 
   // Update document title
   document.title = title
+
+  // Update canonical + og:url to home
+  updateCanonical('/map/')
 
   // Update meta description
   updateMetaTag('meta[name="description"]', 'content', description)
@@ -70,6 +87,9 @@ export function updateVenueSEO(venue, siteSettings) {
   const title = venue.seo?.metaTitle || `${venue.title} | Live Nation`
   document.title = title
 
+  // Canonical + og:url
+  updateCanonical(`/map/venue/${venue.slug}`)
+
   // Description: seo.metaDescription > description > site default
   const description =
     venue.seo?.metaDescription ||
@@ -109,10 +129,50 @@ export function updateVenueSEO(venue, siteSettings) {
     }
     twitterImage.setAttribute('content', imageUrl)
   }
+
+  // Inject venue JSON-LD structured data
+  let ldScript = document.getElementById('venue-jsonld')
+  if (!ldScript) {
+    ldScript = document.createElement('script')
+    ldScript.id = 'venue-jsonld'
+    ldScript.type = 'application/ld+json'
+    document.head.appendChild(ldScript)
+  }
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Place',
+    name: venue.title,
+    description,
+    url: `${SITE_ORIGIN}/map/venue/${venue.slug}`,
+    ...(imageUrl && { image: imageUrl }),
+    ...(venue.location && {
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: venue.location.lat,
+        longitude: venue.location.lng,
+      },
+    }),
+    ...(venue.city && venue.state && {
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: venue.city,
+        addressRegion: venue.state,
+        addressCountry: 'US',
+      },
+    }),
+  }
+  ldScript.textContent = JSON.stringify(jsonLd)
+}
+
+// Remove venue-specific JSON-LD when leaving venue pages
+function removeVenueJsonLd() {
+  const el = document.getElementById('venue-jsonld')
+  if (el) el.remove()
 }
 
 // Reset SEO to site-level defaults
 export function resetToSiteSEO(siteSettings) {
+  removeVenueJsonLd()
   updateSEO(siteSettings)
 }
 

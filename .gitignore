@@ -147,6 +147,9 @@ public/audio/*.mp3
 public/audio/*.wav
 public/audio/*.ogg
 
+# Generated at build time
+public/sitemap.xml
+
 # Playwright MCP
 .playwright-mcp/
 
