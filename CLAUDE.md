@@ -28,65 +28,14 @@ Interactive 3D venue map for Live Nation built with React 19, Three.js (via Reac
 
 **Routes**:
 - `/` → MapPage: 3D interactive US map (desktop) or accordion list (mobile)
-- `/venue/:slug` → VenuePage: Hero with SVG animation, gallery, about module
+- `/venue/:slug` → VenuePage (lazy-loaded): Hero with SVG animation, gallery, about module
 
 **Data Flow**:
 1. App.jsx fetches all venues on mount via `fetchMapPoints()` in `src/services/mapPoints.js`
 2. GROQ query returns mapPoint documents with resolved image assets and metadata
 3. `mapToRenderable()` transforms lat/lng to 3D coordinates via `latLonTo3D()`
 4. Data passed to pages as props: `mapPoints`, `pointsLoading`, `pointsError`
-
----
-
-## Directory Structure
-
-```
-src/
-├── pages/
-│   ├── MapPage.jsx          # 3D map canvas, splash screen, selection overlay
-│   └── VenuePage.jsx        # Hero section, gallery, about module
-├── components/
-│   ├── MobileMapView.jsx    # Static map + regional accordions for mobile
-│   ├── RegionAccordion.jsx  # Collapsible venue list by region
-│   └── ResponsiveImage.jsx  # Sanity image with srcset, LQIP blur loading
-├── modules/
-│   ├── SiteHeader.jsx       # Fixed header with scroll-hide behavior
-│   ├── VenueAboutModule.jsx # Video, description, services, partners, crew
-│   └── VenueGalleryModule.jsx # Staggered gallery layout (absolute/flex)
-├── hooks/
-│   ├── useViewportWidth.js  # Viewport tracking hook (SSR-safe)
-│   └── useScrollDirection.js # Returns 'up'/'down' for header visibility
-├── services/
-│   └── mapPoints.js         # GROQ query, data normalization, coordinate transform
-├── lib/
-│   ├── sanityClient.js      # Sanity client config (CDN, token, perspective)
-│   └── imageUrl.js          # urlFor() image URL builder
-├── constants/
-│   └── theme.js             # Colors, breakpoints, z-index, animations, spacing
-├── assets/                  # Static SVGs (arrows, icons)
-│
-├── USMap.jsx                # 3D extruded US map from GeoJSON
-├── MapPoint.jsx             # 3D venue markers (3-ring system)
-├── CameraController.jsx     # Animated camera transitions (3s, easeInOutCubic)
-├── FlashlightPlane.jsx      # Custom GLSL shader for logo sweep effect
-├── ShaderText.jsx           # Gradient text with flashlight highlight
-├── ShaderTester.jsx         # Dev tool for shader parameter testing
-├── usStates.js              # US_BOUNDS constants + latLonTo3D() projection
-├── useFlashlightGUI.js      # lil-gui debug controls for ShaderText gradient
-└── useFlashlightPlaneGUI.js # lil-gui debug controls for FlashlightPlane shader
-
-sanity/
-├── sanity.config.ts         # Studio config (deskTool, visionTool)
-├── sanity.cli.ts            # CLI config for deployment
-└── schemas/
-    └── mapPoint.ts          # Single document type with all venue fields
-
-public/
-├── _redirects               # Netlify routing rules
-├── fonts/                   # Typeface JSON for Three.js text
-├── images/                  # Static images (logos, mobile map)
-└── models/                  # GLB/GLTF 3D models
-```
+5. Both `fetchMapPoints()` and `fetchSiteSettings()` use module-level caching to avoid redundant requests
 
 ---
 
@@ -118,22 +67,13 @@ VITE_SANITY_USE_CDN=true
 | `aboutModule` | object | Video, videoPoster, description, services, partners, crew |
 | `description` | text | Short text description at document level |
 
-### GROQ Query Pattern (mapPoints.js)
-```groq
-*[_type == "mapPoint"] | order(title asc) {
-  _id, title, "slug": slug.current, state, city, region, location, description,
-  "heroImage": heroImage{ asset->{ _id, url, metadata{ lqip, dimensions } }, hotspot, crop },
-  "heroLineSvgUrl": heroLineAnimation.asset->url,
-  "logoData": { "url": logoTexture.asset->url, "dimensions": logoTexture.asset->metadata.dimensions },
-  gallery[]{ _key, title, position, "image": image{ asset->{ _id, url, metadata } } },
-  aboutModule{
-    "videoUrl": video.asset->url,
-    "videoType": video.asset->mimeType,
-    "videoPoster": videoPoster{ asset->{ _id, url, metadata }, hotspot, crop },
-    description, services, partners[]{ name, title }, crew[]{ name, title }
-  }
-}
-```
+### `siteSettings` Singleton
+
+Global settings including SEO metadata, mobile map image, and `audioPlaylist[]` (array of audio files for background music).
+
+### Dev Proxy
+
+In dev mode, `src/lib/sanityClient.js` rewrites Sanity API URLs (`*.sanity.io`) to same-origin so Vite can proxy them (avoids CORS). This only applies to API calls through the Sanity client, not direct asset fetches.
 
 ---
 
@@ -145,99 +85,59 @@ VITE_SANITY_USE_CDN=true
 - **Function**: `latLonTo3D(lon, lat)` returns `[x, y]` for 2D plane at Z=0
 - **MapPoint Z-offset**: Markers positioned at `z=12.5` above map surface
 
-### Canvas Setup (MapPage.jsx)
-```jsx
-<Canvas>
-  <PerspectiveCamera position={[164.3, 221.38, 270.94]} rotation={[-0.724, 0.286, 0.245]} />
-  <ambientLight intensity={0.5} />
-  <directionalLight position={[100, 200, 100]} intensity={1} castShadow />
-  <USMap />
-  <group rotation={[-Math.PI / 2, 0, 0]}>
-    {spacedPoints.map(point => <MapPoint key={point._id} ... />)}
-  </group>
-  {cameraTarget && <CameraController targetPosition={cameraTarget} onComplete={...} />}
-</Canvas>
-```
-
 ### Key 3D Components
 
-**USMap.jsx** - Extruded US map from GeoJSON
-- Parses `us-states.json` with Polygon/MultiPolygon support
-- ExtrudeGeometry (depth: 4, bevel: 0.2)
-- Materials: black top/bottom, white emissive edges
-- EdgesGeometry for outline at `renderOrder={1}`
+**USMap.jsx** - Extruded US map from GeoJSON with ExtrudeGeometry (depth: 4, bevel: 0.2)
 
-**MapPoint.jsx** - 3-ring venue markers
-- Outer ring (r=13, opacity 0.75), middle ring (r=8.5), core disk (r=4.5)
-- Invisible hit area (r=14.5) for pointer detection
-- Scale: 0.8 (idle) → 0.95 (active)
-- Projects world position to screen via `useFrame` + `onProject` callback
+**MapPoint.jsx** - 3-ring venue markers with staggered entrance animation (`easeOutQuart`), idle pulse, hover/select states, and screen-space projection via `useFrame`
 
-**CameraController.jsx** - Animated camera transitions
-- Duration: ~3 seconds (progress += delta * 0.33)
-- Easing: `easeInOutCubic(t)`
-- Lerps camera position and controls.target
-- Triggers `onComplete` callback when done
+**CameraController.jsx** - Animated camera transitions (~3s, `easeInOutCubic`). Reuses `Vector3` instances via refs to avoid GC pressure in `useFrame`.
 
-**FlashlightPlane.jsx** - Custom GLSL shader
-- Uniforms: `uPointer`, `uRadius`, `uFeather`, `uIntensity`, `uAmbient`, `uTime`
-- Ping-pong sweep animation across texture
-- Fragment shader calculates distance-based spotlight blend
+**MapCursorTilt.jsx** - Subtle parallax tilt of the map group based on cursor position (max ~1.4°)
+
+**FlashlightPlane.jsx** - Custom GLSL shader for logo sweep effect on venue pages
 
 ### Point Spacing Algorithm (MapPage.jsx)
-`resolveSpacedPoints()` prevents marker overlap:
-- 8 iterations of force-directed positioning
-- Pushes overlapping points apart by overlap distance
-- Clamps to US_BOUNDS to keep markers visible
-- Dynamic `minDistance` based on viewport width
+`resolveSpacedPoints()` prevents marker overlap with 8 iterations of force-directed positioning, clamped to US_BOUNDS.
 
 ### Memory Management
-All components dispose geometries/materials in `useEffect` cleanup:
-```javascript
-useEffect(() => () => {
-  geometry.dispose();
-  material.dispose();
-}, [geometry, material]);
-```
+All 3D components dispose geometries/materials in `useEffect` cleanup.
+
+---
+
+## Page Transition & Animation Architecture
+
+### Navigation Pattern
+`src/utils/navigateWithFade.js` provides `navigateWithFade(navigate, path)` — fades `document.body` opacity to 0, navigates after 350ms, restores opacity. Self-cancelling: each call clears pending timers from previous invocations. Used by BackButton, NextUpModule, SiteHeader, RegionAccordion.
+
+### VenuePage Hero Animation State Machine
+The hero SVG line-drawing animation uses a multi-stage reveal chain. **Critical pattern**: `allowLineAnimation` is derived from `lineAnimationSlug === slug` (not a boolean) so it's synchronously `false` when the slug changes during venue-to-venue navigation. This prevents stale-state issues where effects from the previous venue would fire the animation prematurely.
+
+**State chain**: `showHeroLoader` → `heroLoaderRendered` (450ms fade) → `heroVisible` (`HERO_REVEAL_FADE_MS` delay) → `lineAnimationSlug` set (`HERO_REVEAL_SLIDE_MS` delay) → `shouldAnimate` becomes true → `HeroSVGAnimator` runs CSS stroke-dashoffset animation.
+
+**Opacity layers**: The hero art stage has a single opacity wrapper (`heroArtStageStyle`). Do NOT duplicate this opacity inside `HeroArtLayers` — compound opacity makes the animation invisible during fade-in.
+
+### MapPage Selection Overlay
+Connector line between venue card and 3D pin uses an SVG `<path>` with rAF-driven draw animation. Uses `drawCancelledRef` guard to prevent orphaned animation frames when switching pins rapidly.
+
+### Audio Player
+`src/hooks/useAudioPlayer.js` uses a module-level `Audio` singleton that persists across route changes. Fetches playlist from Sanity (`siteSettings.audioPlaylist`) with local manifest fallback. Volume stored in `localStorage`.
 
 ---
 
 ## Styling System
 
 ### Design Tokens (`src/constants/theme.js`)
+- **Colors**: `BACKGROUND_DARK` (#000), `TEXT_WHITE` (#fff), `ACCENT_RED` (#ff2b2b)
+- **Breakpoints**: `MOBILE` (768px), `TABLET` (900px), `DESKTOP` (1024px)
+- **Z-Index**: `CURSOR` (90) → `SELECTION_OVERLAY` (130) → `HEADER` (200) → `SPLASH` (9999)
+- **Animations**: Duration strings (`QUICK`/`STANDARD`/`SLOW`) and millisecond values (`HERO_LOADER_MIN_MS`: 1500, `HERO_REVEAL_FADE_MS`: 500)
 
-**Colors**:
-- `BACKGROUND_DARK`: #000000
-- `TEXT_WHITE`: #fff (with 70%, 85% opacity variants)
-- `ACCENT_RED`: #ff2b2b
-- `GRID_RED`: rgba(200, 0, 0, 0.12)
-- `BORDER_WHITE_*`: 8%, 15%, 30% opacity variants
-
-**Breakpoints**:
-- `MOBILE`: 768px (3D canvas vs accordion list)
-- `TABLET`: 900px (gallery layout switch)
-- `DESKTOP`: 1024px (about module grid)
-
-**Z-Index Scale**:
-- `CURSOR`: 90, `SELECTION_OVERLAY`: 130, `HEADER`: 200, `SPLASH`: 9999
-
-**Animations**:
-- `QUICK`: 0.2s, `STANDARD`: 0.3s, `SLOW`: 0.4s
-- `SPLASH_DURATION`: 2000ms
-
-### Global CSS (`src/global.css`)
-- CSS custom properties: `--font-display`, `--font-body`, `--color-accent`
-- Font: Poppins (Typekit) - 700 weight for headings, 500 for body
-- Typography: uppercase headings with 0.1em letter-spacing
-- Focus styles: 2px solid white outline with 2px offset
-- `.sr-only` class for screen reader text
-
-### Styling Patterns
-- **Inline styles** (React style objects) - no CSS-in-JS library
-- **Responsive**: `clamp()` for fluid spacing, conditional rendering at breakpoints
-- **Grid background**: linear-gradient pattern at 40px intervals
-- **LQIP loading**: 20px blur placeholder → fade to full image
-- **Animations**: CSS transitions, SVG stroke-dasharray for line drawing
+### CSS Architecture
+- **Inline styles** (React style objects) — no CSS-in-JS library
+- **Global CSS** (`src/global.css`): CSS custom properties (`--color-accent`, `--color-text`), Poppins font via Typekit, hover effects for BackButton and NextUpModule
+- **Responsive**: `clamp()` for fluid spacing, conditional rendering at breakpoints via `useViewportWidth()`
+- **LQIP loading**: 20px blur placeholder → fade to full image (ResponsiveImage component)
 
 ---
 
@@ -245,8 +145,9 @@ useEffect(() => () => {
 
 ### Vite Configuration (`vite.config.js`)
 - Base path: `/map/`
-- Plugins: `@vitejs/plugin-react`, custom redirect middleware (/ → /map/)
-- Assets: Includes GLSL files via `assetsInclude: ['**/*.glsl']`
+- GLSL files included as assets
+- Manual chunks: `three-vendor`, `lottie`, `gsap`
+- VenuePage is lazy-loaded (`React.lazy`) with `preloadVenuePage()` called on pin click
 
 ### Netlify Routing (`public/_redirects`)
 ```
@@ -254,12 +155,6 @@ useEffect(() => () => {
 /              /map/           301
 /map/*         /index.html    200
 ```
-
-### Build Output (`/dist`)
-- Main bundle: ~1.3MB (Three.js + R3F)
-- CSS: ~1KB
-- Fonts: 175KB (typeface JSON)
-- Models: ~1.4MB (GLB/GLTF)
 
 ---
 
@@ -269,56 +164,13 @@ useEffect(() => () => {
 - Mobile detection: `useViewportWidth()` < 768px
 - Desktop: Full 3D canvas with MapPoint selection + SelectionOverlay
 - Mobile: MobileMapView with static map image + RegionAccordion components
-- Gallery: Absolute positioning (desktop) vs flex with alternating alignment (mobile)
-
-### Data Fetching
-- Single fetch on App mount with cancellation token
-- Error boundary with graceful degradation (empty array on failure)
-- Loading states passed to child pages
-
-### Animation Patterns
-- `useFrame` for Three.js animations (camera, shader uniforms, position projection)
-- CSS transitions for UI (opacity, height, transform)
-- SVG line drawing: stroke-dasharray + stroke-dashoffset animation
-- Staggered delays for sequential reveals
-
-### Performance Optimizations
-- Geometry/material disposal on unmount
-- `useMemo` for expensive calculations (spacing algorithm, coordinate transforms)
-- Lazy loading images with responsive srcset
-- `depthWrite={false}` on transparent objects
-- Mobile fallback eliminates 3D rendering overhead
-
----
-
-## Component Reference
-
-### Pages
-| Component | Purpose | Key Features |
-|-----------|---------|--------------|
-| MapPage | Main 3D map view | Canvas, splash screen, selection overlay, cursor follower |
-| VenuePage | Venue detail page | Hero with SVG animation, flashlight logo reveal, gallery, about |
-
-### Modules
-| Component | Purpose | Key Features |
-|-----------|---------|--------------|
-| SiteHeader | Fixed navigation | Scroll-hide behavior, responsive grid layout |
-| VenueGalleryModule | Image gallery | Staggered absolute layout (desktop), flex (mobile) |
-| VenueAboutModule | Venue info | Video player, rich text, services/partners/crew lists |
-
-### 3D Components
-| Component | Purpose | Key Features |
-|-----------|---------|--------------|
-| USMap | 3D extruded map | GeoJSON parsing, ExtrudeGeometry, edge lines |
-| MapPoint | Venue markers | 3-ring system, hover/select states, screen projection |
-| CameraController | Camera animation | 3s transitions, easeInOutCubic, lerp position/target |
-| FlashlightPlane | Shader effect | GLSL spotlight sweep, ping-pong animation |
 
 ### Hooks
 | Hook | Returns | Purpose |
 |------|---------|---------|
-| useViewportWidth | number | Current viewport width (SSR-safe, default 1440) |
-| useScrollDirection | 'up' \| 'down' | Scroll direction with threshold (40px default) |
+| `useViewportWidth` | number | Current viewport width (SSR-safe, default 1440) |
+| `useScrollDirection` | 'up' \| 'down' | Scroll direction with threshold (40px default) |
+| `useAudioPlayer` | `{ isPlaying, volume, togglePlayPause, startPlayback, setVolume, hasInteracted }` | Background music singleton |
 
 ---
 
