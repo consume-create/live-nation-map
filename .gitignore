@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Logs
 logs
 *.log
@@ -137,3 +140,15 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Audio files (large binary assets served locally)
+public/audio/*.m4a
+public/audio/*.mp3
+public/audio/*.wav
+public/audio/*.ogg
+
+# Playwright MCP
+.playwright-mcp/
+
+# Claude Code
+.claude/

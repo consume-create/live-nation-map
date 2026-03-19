@@ -1,4 +1,4 @@
-import { useState, useCallback, useLayoutEffect, useRef, useMemo, useEffect } from 'react'
+import { useState, useCallback, useLayoutEffect, useRef, useMemo, useEffect, forwardRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
@@ -8,11 +8,13 @@ import MapPoint from '../MapPoint'
 import ShaderTester from '../ShaderTester'
 import { isSanityConfigured } from '../lib/sanityClient'
 import CameraController from '../CameraController'
+import MapCursorTilt from '../MapCursorTilt'
 import { US_BOUNDS } from '../usStates'
 import SiteHeader from '../modules/SiteHeader'
 import MobileMapView from '../components/MobileMapView'
 import LiveNationLogo from '../components/LiveNationLogo'
-import { BREAKPOINTS, ANIMATIONS, SPACING, CAMERA, COLORS } from '../constants/theme'
+import { BREAKPOINTS, ANIMATIONS, SPACING, CAMERA, COLORS, Z_INDEX } from '../constants/theme'
+import { preloadVenuePage } from '../App'
 
 function generateKey(point, idx) {
   return point._id || point.slug || idx
@@ -100,6 +102,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
   const [showSplash, setShowSplash] = useState(true)
   const [splashOpacity, setSplashOpacity] = useState(0)
   const [mapOpacity, setMapOpacity] = useState(0)
+  const [pinsRevealStartTime, setPinsRevealStartTime] = useState(null)
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === 'undefined' ? 1440 : window.innerWidth,
     height: typeof window === 'undefined' ? 900 : window.innerHeight,
@@ -109,6 +112,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
   const navigationTimeoutRef = useRef(null)
   const fadeTimeoutRef = useRef(null)
   const navTimeoutRef = useRef(null)
+  const [popupExiting, setPopupExiting] = useState(false)
+  const pinHoverCountRef = useRef(0)
+  const cursorFollowerRef = useRef(null)
+  const popupExitTimeoutRef = useRef(null)
 
   useEffect(() => {
     // Fade in splash immediately
@@ -120,6 +127,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
     const fadeOutTimer = setTimeout(() => {
       setSplashOpacity(0)
       setMapOpacity(1)
+      setPinsRevealStartTime(performance.now())
     }, ANIMATIONS.SPLASH_DURATION)
 
     // Remove splash after fade out completes
@@ -155,10 +163,28 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
     selectedPointScreenRef.current = { x, y }
   }, [])
 
+  const handlePinHover = useCallback((hovered) => {
+    pinHoverCountRef.current += hovered ? 1 : -1
+    if (pinHoverCountRef.current < 0) pinHoverCountRef.current = 0
+    const isHovered = pinHoverCountRef.current > 0
+    const el = cursorFollowerRef.current
+    if (!el) return
+    const color = isHovered ? '#ffffff' : COLORS.ACCENT_RED
+    const shadow = isHovered ? '0 0 12px rgba(255,255,255,0.35)' : '0 0 12px rgba(255,0,0,0.35)'
+    const inner = el.querySelector('[data-cursor-inner]')
+    if (!inner) return
+    inner.style.borderColor = color
+    inner.style.boxShadow = shadow
+    inner.style.transform = isHovered ? 'scale(0.8)' : 'scale(1)'
+    const bars = inner.querySelectorAll('[data-cursor-bar]')
+    bars.forEach((b) => { b.style.background = color })
+  }, [])
+
   const buildFocusTarget = useCallback((point) => {
-    if (!point || !Array.isArray(point.position)) return null
-    const [px = 0, py = 0] = point.position
-    const worldCenter = new Vector3(px, 12.5, -py)
+    const pos = point?.adjustedPosition ?? point?.position
+    if (!point || !Array.isArray(pos)) return null
+    const [px = 0, py = 0] = pos
+    const worldCenter = new Vector3(25 + px, 12.5, -py)
     return {
       position: worldCenter,
       zoomFactor: CAMERA.ZOOM_FACTOR,
@@ -168,18 +194,38 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
   const handlePointClick = (slug) => {
     if (isNavigating || cameraTarget) return
     selectedPointScreenRef.current = null
-    setSelectedSlug((current) => (current === slug ? null : slug))
+    preloadVenuePage()
+
+    if (slug === selectedSlug) {
+      setSelectedSlug(null)
+      return
+    }
+
+    if (selectedSlug) {
+      // Already showing a popup: play exit then switch to new pin
+      setPopupExiting(true)
+      if (popupExitTimeoutRef.current) clearTimeout(popupExitTimeoutRef.current)
+      popupExitTimeoutRef.current = setTimeout(() => {
+        popupExitTimeoutRef.current = null
+        setSelectedSlug(slug)
+        setPopupExiting(false)
+      }, POPUP_EXIT_DURATION_MS)
+    } else {
+      setSelectedSlug(slug)
+    }
   }
 
   const handleSeeMore = () => {
     if (!selectedPoint?.slug || isNavigating || cameraTarget) return
 
     const focusTarget = buildFocusTarget(selectedPoint)
+    const venueSlug = selectedPoint.slug
 
-    setPendingSlug(selectedPoint.slug)
+    setPendingSlug(venueSlug)
 
-    // Close panel immediately to prevent line animation glitches
-    setSelectedSlug(null)
+    // Fade out the overlay gracefully instead of unmounting immediately
+    // This prevents the heavy DOM teardown from stuttering the camera animation
+    setPopupExiting(true)
 
     if (!focusTarget) {
       setIsNavigating(true)
@@ -187,24 +233,37 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
         clearTimeout(navigationTimeoutRef.current)
       }
       navigationTimeoutRef.current = setTimeout(() => {
-        navigate(`/venue/${selectedPoint.slug}`)
+        navigate(`/venue/${venueSlug}`)
       }, 3000)
       return
     }
 
-    // Start camera animation
-    setCameraTarget(focusTarget)
+    // Wait 2 frames for React to finish the exit render before starting camera
+    // This separates the overlay teardown from the camera mount across frames
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setCameraTarget(focusTarget)
 
-    // Start fade to black at 2 seconds (while camera is still moving)
-    fadeTimeoutRef.current = setTimeout(() => {
-      setTransitionOverlayOpacity(1)
+        // Unmount the overlay after its fade-out completes (avoids mid-zoom stutter)
+        if (popupExitTimeoutRef.current) clearTimeout(popupExitTimeoutRef.current)
+        popupExitTimeoutRef.current = setTimeout(() => {
+          popupExitTimeoutRef.current = null
+          setSelectedSlug(null)
+          setPopupExiting(false)
+        }, POPUP_EXIT_DURATION_MS + 50)
 
-      // Navigate 1 second later (when fade completes at 3 seconds total)
-      navTimeoutRef.current = setTimeout(() => {
-        setIsNavigating(true)
-        navigate(`/venue/${selectedPoint.slug}`)
-      }, 1000)
-    }, 2000)
+        // Start fade to black so screen is fully black before navigation
+        fadeTimeoutRef.current = setTimeout(() => {
+          setTransitionOverlayOpacity(1)
+
+          // Navigate after fade is fully opaque (1s transition + 200ms buffer)
+          navTimeoutRef.current = setTimeout(() => {
+            setIsNavigating(true)
+            navigate(`/venue/${venueSlug}`)
+          }, 1200)
+        }, 1200)
+      })
+    })
   }
 
   useEffect(() => {
@@ -220,6 +279,10 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
       if (navTimeoutRef.current) {
         clearTimeout(navTimeoutRef.current)
         navTimeoutRef.current = null
+      }
+      if (popupExitTimeoutRef.current) {
+        clearTimeout(popupExitTimeoutRef.current)
+        popupExitTimeoutRef.current = null
       }
     }
   }, [])
@@ -316,7 +379,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
             transition: 'opacity 800ms ease-out',
           }}
         >
-          <MobileMapView mapPoints={mapPoints} mobileMapImage={siteSettings?.mobileMapImage} />
+          <MobileMapView mapPoints={mapPoints} />
         </div>
       </>
     )
@@ -421,17 +484,7 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
         </div>
         )}
 
-        {selectedPoint && (
-        <SelectionOverlay
-          point={selectedPoint}
-          screenRef={selectedPointScreenRef}
-          onSeeMore={handleSeeMore}
-          onClose={() => setSelectedSlug(null)}
-          isLoading={isNavigating || Boolean(cameraTarget)}
-        />
-        )}
-
-        <Canvas style={{ height: '100%' }}>
+        <Canvas style={{ height: '100%', position: 'relative', zIndex: 0 }}>
         <color attach="background" args={[0, 0, 0]} />
         <PerspectiveCamera
           makeDefault
@@ -448,67 +501,137 @@ export default function MapPage({ mapPoints, pointsLoading, pointsError, siteSet
         <directionalLight position={[-100, 200, -100]} intensity={0.5} />
         <pointLight position={[0, 300, 0]} intensity={0.8} />
 
-        <USMap />
+        <MapCursorTilt enabled={!cameraTarget}>
+          <USMap />
 
-        <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-          {spacedPoints
-            .filter((point) => Array.isArray(point.adjustedPosition || point.position))
-            .map((point) => (
-              <MapPoint
-                key={point._id || point.slug}
-                position={point.adjustedPosition || point.position}
-                label={point.title}
-                onClick={() => handlePointClick(point.slug)}
-                selected={selectedPoint?.slug === point.slug}
-                onProject={selectedPoint?.slug === point.slug ? handleProjectUpdate : undefined}
-              />
-            ))}
-        </group>
+          <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+            {spacedPoints
+              .filter((point) => Array.isArray(point.adjustedPosition || point.position))
+              .map((point, index) => (
+                <MapPoint
+                  key={point._id || point.slug}
+                  position={point.adjustedPosition || point.position}
+                  label={point.title}
+                  onClick={() => handlePointClick(point.slug)}
+                  selected={selectedPoint?.slug === point.slug}
+                  onProject={selectedPoint?.slug === point.slug ? handleProjectUpdate : undefined}
+                  staggerIndex={index}
+                  revealStartTime={pinsRevealStartTime}
+                  onHover={handlePinHover}
+                />
+              ))}
+          </group>
+        </MapCursorTilt>
 
         <gridHelper args={[1000, 20, '#333333', '#222222']} position={[0, -5, 0]} />
         </Canvas>
-
-        <CursorFollower active />
-
-        {/* Transition Overlay - Fade to black */}
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: '#000',
-            opacity: transitionOverlayOpacity,
-            transition: 'opacity 1000ms ease-in-out',
-            pointerEvents: transitionOverlayOpacity > 0 ? 'auto' : 'none',
-            zIndex: 200,
-          }}
-        />
       </div>
     </div>
+
+    {/* Selection overlay and cursor outside map/Canvas so they always paint on top */}
+    {selectedPoint && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          paddingTop: SPACING.HEADER_HEIGHT,
+          pointerEvents: 'none',
+          zIndex: Z_INDEX.SELECTION_OVERLAY,
+          isolation: 'isolate',
+        }}
+      >
+        <SelectionOverlay
+          point={selectedPoint}
+          screenRef={selectedPointScreenRef}
+          onSeeMore={handleSeeMore}
+          onClose={() => {
+            if (popupExitTimeoutRef.current) {
+              clearTimeout(popupExitTimeoutRef.current)
+              popupExitTimeoutRef.current = null
+            }
+            setPopupExiting(false)
+            setSelectedSlug(null)
+          }}
+          isLoading={isNavigating || Boolean(cameraTarget)}
+          isExiting={popupExiting}
+        />
+      </div>
+    )}
+    <CursorFollower active ref={cursorFollowerRef} />
+
+    {/* Transition Overlay - Fade to black */}
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: '#000',
+        opacity: transitionOverlayOpacity,
+        transition: 'opacity 1000ms ease-in-out',
+        pointerEvents: transitionOverlayOpacity > 0 ? 'auto' : 'none',
+        zIndex: 200,
+      }}
+    />
     </>
   )
 }
 
-function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
+const CONNECTOR_DRAW_DURATION_MS = 500
+const CONNECTOR_ENDPOINT_DELAY_MS = 520       // slightly after line finishes drawing (500ms)
+const CONNECTOR_RETRACT_DURATION_MS = 180
+const POPUP_EXIT_DURATION_MS = 200
+const POPUP_ENTER_DURATION_MS = 220
+
+function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading, isExiting = false }) {
   const cardRef = useRef(null)
   const anchorRef = useRef(null)
-  const h1Ref = useRef(null)
-  const vRef = useRef(null)
-  const h2Ref = useRef(null)
+  const pathRef = useRef(null)
   const endpointRef = useRef(null)
+  const drawPhaseRef = useRef('drawing')
+  const initialPathDRef = useRef(null)
+  const drawCompleteTimeoutRef = useRef(null)
+  const drawCancelledRef = useRef(false)
+  const drawStartScheduledRef = useRef(false)
+  const drawStartedForSlugRef = useRef(null)
+  const slugRef = useRef(null)
+  const [entered, setEntered] = useState(false)
 
   const updateAnchor = useCallback(() => {
     if (!cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
-    const nextAnchor = {
+    anchorRef.current = {
       x: rect.right,
       y: rect.top + rect.height / 2,
     }
-    anchorRef.current = nextAnchor
   }, [])
 
   useLayoutEffect(() => {
     updateAnchor()
   }, [updateAnchor, point?.slug])
+
+  // Exit: when isExiting, card animates out
+  useEffect(() => {
+    if (isExiting) setEntered(false)
+  }, [isExiting])
+
+  // When exit starts, retract the line (draw off) then path is cleared on next point change
+  useEffect(() => {
+    if (!isExiting) return
+    const pathEl = pathRef.current
+    if (!pathEl) return
+    const length = pathEl.getTotalLength()
+    if (length > 0) {
+      pathEl.setAttribute('stroke-dasharray', String(length))
+      pathEl.style.transition = `stroke-dashoffset ${CONNECTOR_RETRACT_DURATION_MS}ms ease-out`
+      pathEl.setAttribute('stroke-dashoffset', String(length))
+    }
+  }, [isExiting])
+
+  // Enter: when not exiting and we have a point, animate card in after a frame
+  useLayoutEffect(() => {
+    if (!point || isExiting) return
+    const id = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(id)
+  }, [point?.slug, isExiting])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -520,109 +643,148 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
   const upperName = point?.title?.toUpperCase?.() ?? ''
   const subtitle = point?.state ? point.state.toUpperCase() : 'UNITED STATES'
 
-  const hasAnimatedRef = useRef(false)
-
   useEffect(() => {
-    hasAnimatedRef.current = false
-    if (h1Ref.current) {
-      h1Ref.current.style.width = '0px'
-      h1Ref.current.style.opacity = '0'
-    }
-    if (vRef.current) {
-      vRef.current.style.height = '0px'
-      vRef.current.style.opacity = '0'
-    }
-    if (h2Ref.current) {
-      h2Ref.current.style.width = '0px'
-      h2Ref.current.style.opacity = '0'
+    if (typeof point?.slug === 'undefined') return
+    slugRef.current = point.slug
+    // Only reset draw state when switching to a different slug (prevents double draw in Strict Mode)
+    if (drawStartedForSlugRef.current === point.slug) return
+    drawCancelledRef.current = true
+    drawPhaseRef.current = 'drawing'
+    initialPathDRef.current = null
+    drawStartScheduledRef.current = false
+    if (drawCompleteTimeoutRef.current != null) {
+      cancelAnimationFrame(drawCompleteTimeoutRef.current)
+      drawCompleteTimeoutRef.current = null
     }
     if (endpointRef.current) {
       endpointRef.current.style.opacity = '0'
     }
+    // Clear path to card anchor only so old pin's path is not visible when SVG fades in (avoids double-draw look)
+    const anchor = anchorRef.current
+    if (pathRef.current && anchor) {
+      pathRef.current.setAttribute('d', `M ${anchor.x} ${anchor.y}`)
+    }
+    drawCancelledRef.current = false
+    drawStartedForSlugRef.current = point.slug
   }, [point?.slug])
 
   const applyLineStyles = useCallback(() => {
     const screenPos = screenRef?.current
     const start = anchorRef.current
-    const horizontalOne = h1Ref.current
-    const verticalLine = vRef.current
-    const horizontalTwo = h2Ref.current
-    const endpoint = endpointRef.current
+    const pathEl = pathRef.current
+    const circleEl = endpointRef.current
 
-    if (!horizontalOne || !verticalLine || !endpoint || !start || !screenPos) {
-      if (horizontalOne) horizontalOne.style.opacity = '0'
-      if (verticalLine) verticalLine.style.opacity = '0'
-      if (horizontalTwo) horizontalTwo.style.opacity = '0'
-      if (endpoint) endpoint.style.opacity = '0'
-      hasAnimatedRef.current = false
+    if (!pathEl || !start || !screenPos) {
       return
     }
 
-    // Anchor is in viewport coords, MapPoint is in Canvas coords (needs offset for paddingTop)
     const { x: startX, y: startY } = start
     const { x: endX, y: endY } = screenPos
-    const containerEndY = endY + SPACING.HEADER_HEIGHT // Add padding offset to Canvas coords
+    const containerEndY = endY + SPACING.HEADER_HEIGHT
     const midX = Math.max(startX + 80, endX)
+    const pathD = `M ${startX} ${startY} H ${midX} V ${containerEndY} H ${endX}`
 
-    // Set positions (these don't animate)
-    horizontalOne.style.left = `${startX}px`
-    horizontalOne.style.top = `${startY}px`
-
-    const verticalTop = Math.min(startY, containerEndY)
-    verticalLine.style.left = `${midX}px`
-    verticalLine.style.top = `${verticalTop}px`
-
-    const horizontalTwoWidth = Math.abs(endX - midX)
-    const horizontalTwoLeft = Math.min(endX, midX)
-    if (horizontalTwo && horizontalTwoWidth > 0.5) {
-      horizontalTwo.style.left = `${horizontalTwoLeft}px`
-      horizontalTwo.style.top = `${containerEndY}px`
-    }
-
-    endpoint.style.left = `${endX - 5}px`
-    endpoint.style.top = `${containerEndY - 5}px`
-
-    const applyDimensions = () => {
-      horizontalOne.style.width = `${Math.max(0, midX - startX)}px`
-
-      const verticalHeight = Math.abs(containerEndY - startY)
-      verticalLine.style.height = `${verticalHeight}px`
-      verticalLine.style.opacity = verticalHeight > 0 ? '1' : '0'
-
-      if (horizontalTwo) {
-        if (horizontalTwoWidth > 0.5) {
-          horizontalTwo.style.width = `${horizontalTwoWidth}px`
-          horizontalTwo.style.opacity = '1'
-        } else {
-          horizontalTwo.style.opacity = '0'
-        }
+    if (drawPhaseRef.current === 'drawing') {
+      if (!initialPathDRef.current && !drawStartScheduledRef.current) {
+        drawStartScheduledRef.current = true
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            drawStartScheduledRef.current = false
+            const start = anchorRef.current
+            const screenPos = screenRef?.current
+            if (!pathEl || !start || !screenPos) return
+            const sx = start.x
+            const sy = start.y
+            const ex = screenPos.x
+            const ey = screenPos.y
+            const cey = ey + SPACING.HEADER_HEIGHT
+            const mx = Math.max(sx + 80, ex)
+            const pathDNew = `M ${sx} ${sy} H ${mx} V ${cey} H ${ex}`
+            initialPathDRef.current = pathDNew
+            pathEl.setAttribute('d', pathDNew)
+            const length = pathEl.getTotalLength()
+            pathEl.setAttribute('stroke-dasharray', String(length))
+            pathEl.setAttribute('stroke-dashoffset', String(length))
+            pathEl.style.transition = ''
+            const startTime = performance.now()
+            const durationMs = CONNECTOR_DRAW_DURATION_MS
+            const tick = () => {
+              if (drawCancelledRef.current) return
+              const elapsed = performance.now() - startTime
+              const progress = Math.min(elapsed / durationMs, 1)
+              const offset = length * (1 - progress)
+              pathEl.setAttribute('stroke-dashoffset', String(offset))
+              if (progress < 1) {
+                drawCompleteTimeoutRef.current = requestAnimationFrame(tick)
+              } else {
+                pathEl.setAttribute('stroke-dasharray', '10000')
+                pathEl.setAttribute('stroke-dashoffset', '0')
+                pathEl.style.transition = ''
+                drawPhaseRef.current = 'following'
+                drawCompleteTimeoutRef.current = null
+              }
+            }
+            drawCompleteTimeoutRef.current = requestAnimationFrame(tick)
+            if (endpointRef.current) {
+              endpointRef.current.setAttribute('cx', String(ex))
+              endpointRef.current.setAttribute('cy', String(cey))
+            }
+          })
+        })
       }
-
-      endpoint.style.opacity = '1'
-    }
-
-    const ensureVisible = () => {
-      horizontalOne.style.opacity = '1'
-      applyDimensions()
-    }
-
-    if (!hasAnimatedRef.current) {
-      hasAnimatedRef.current = true
-      requestAnimationFrame(ensureVisible)
     } else {
-      ensureVisible()
+      pathEl.setAttribute('d', pathD)
+    }
+
+    if (circleEl && drawPhaseRef.current === 'following') {
+      circleEl.setAttribute('cx', String(endX))
+      circleEl.setAttribute('cy', String(containerEndY))
     }
   }, [screenRef])
 
   useEffect(() => {
+    // Stop the rAF loop when exiting to free up frame budget for camera animation
+    if (isExiting) return
     let frame
     const loop = () => {
       applyLineStyles()
       frame = requestAnimationFrame(loop)
     }
     loop()
-    return () => cancelAnimationFrame(frame)
-  }, [applyLineStyles])
+    return () => {
+      cancelAnimationFrame(frame)
+      drawCancelledRef.current = true
+      if (drawCompleteTimeoutRef.current != null) {
+        cancelAnimationFrame(drawCompleteTimeoutRef.current)
+        drawCompleteTimeoutRef.current = null
+      }
+    }
+  }, [applyLineStyles, isExiting])
+
+  // Dot: reset to hidden immediately on point change, then fade in after line finishes
+  useEffect(() => {
+    if (endpointRef.current) {
+      endpointRef.current.style.transition = 'none'
+      endpointRef.current.style.opacity = '0'
+    }
+    const t = setTimeout(() => {
+      if (endpointRef.current) {
+        endpointRef.current.style.transition = 'opacity 0.3s ease-out'
+        endpointRef.current.style.opacity = '1'
+      }
+    }, CONNECTOR_ENDPOINT_DELAY_MS)
+    return () => clearTimeout(t)
+  }, [point?.slug])
+
+  // Dot: fade out when exiting
+  useEffect(() => {
+    if (!isExiting || !endpointRef.current) return
+    endpointRef.current.style.transition = `opacity ${CONNECTOR_RETRACT_DURATION_MS}ms ease-out`
+    endpointRef.current.style.opacity = '0'
+  }, [isExiting])
+
+  const cardVisible = !isExiting && entered
+  const cardTransition = `opacity ${POPUP_ENTER_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${POPUP_ENTER_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
 
   return (
     <>
@@ -634,30 +796,57 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
           left: '60px',
           background: '#f7f7f7',
           color: '#111',
-          padding: '14px 24px 18px',
+          padding: '40px 24px 18px',
           textAlign: 'center',
-          borderRadius: '6px',
+          borderRadius: 0,
           boxShadow: '0 20px 45px rgba(0,0,0,0.45)',
           minWidth: '260px',
           zIndex: 130,
           letterSpacing: '0.05em',
+          pointerEvents: isExiting ? 'none' : 'auto',
+          opacity: cardVisible ? 1 : 0,
+          transform: cardVisible ? 'scale(1)' : 'scale(0.98)',
+          transition: cardTransition,
         }}
       >
         <button
           aria-label="Close selection"
           onClick={onClose}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#ff2b2b'
+            e.currentTarget.style.borderColor = '#ff2b2b'
+            e.currentTarget.style.color = '#fff'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.borderColor = '#555'
+            e.currentTarget.style.color = '#555'
+          }}
           style={{
             position: 'absolute',
             top: '10px',
             right: '12px',
             background: 'transparent',
-            border: 'none',
+            border: '2px solid #555',
+            borderRadius: '50%',
+            width: '28px',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             color: '#555',
-            fontSize: '18px',
+            fontSize: '16px',
+            fontWeight: 700,
+            lineHeight: 1,
             cursor: 'pointer',
+            transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+            padding: 0,
           }}
         >
-          ×
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="1" y1="1" x2="11" y2="11" />
+            <line x1="11" y1="1" x2="1" y2="11" />
+          </svg>
         </button>
 
         <div style={{ fontSize: '32px', fontWeight: 700, marginBottom: '4px' }}>{upperName}</div>
@@ -679,11 +868,12 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
             style={{
               width: '60%',
               padding: '10px 0',
-              borderRadius: '4px',
+              borderRadius: 0,
               border: '1px solid #000',
               background: 'transparent',
               color: '#000',
-              fontWeight: 600,
+              fontFamily: 'var(--font-display, "Poppins", sans-serif)',
+              fontWeight: 700,
               letterSpacing: '0.12em',
               cursor: isLoading ? 'default' : 'pointer',
               opacity: isLoading ? 0.65 : 1,
@@ -696,59 +886,40 @@ function SelectionOverlay({ point, screenRef, onSeeMore, onClose, isLoading }) {
         </div>
       </div>
 
-      <div
-        ref={h1Ref}
+      <svg
         style={{
-          position: 'absolute',
-          zIndex: 110,
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          width: '100vw',
+          height: '100vh',
           pointerEvents: 'none',
-          borderTop: '2px dashed rgba(255,255,255,0.7)',
-          opacity: 0,
-          transition: 'opacity 0.4s ease-out, width 0.4s ease-out',
+          zIndex: Z_INDEX.LINE_DRAWING,
+          opacity: isExiting ? 0 : 1,
+          transition: `opacity ${POPUP_EXIT_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
         }}
-      />
-      <div
-        ref={vRef}
-        style={{
-          position: 'absolute',
-          zIndex: 110,
-          pointerEvents: 'none',
-          borderLeft: '2px dashed rgba(255,255,255,0.7)',
-          opacity: 0,
-          transition: 'opacity 0.4s ease-out 0.1s, height 0.4s ease-out 0.1s',
-        }}
-      />
-      <div
-        ref={h2Ref}
-        style={{
-          position: 'absolute',
-          zIndex: 110,
-          pointerEvents: 'none',
-          borderTop: '2px dashed rgba(255,255,255,0.7)',
-          opacity: 0,
-          transition: 'opacity 0.4s ease-out 0.2s, width 0.4s ease-out 0.2s',
-        }}
-      />
-      <div
-        ref={endpointRef}
-        style={{
-          position: 'absolute',
-          width: '10px',
-          height: '10px',
-          borderRadius: '50%',
-          border: '2px solid rgba(255,255,255,0.85)',
-          background: 'rgba(0,0,0,0.65)',
-          zIndex: 111,
-          pointerEvents: 'none',
-          opacity: 0,
-          transition: 'opacity 0.4s ease-out 0.3s',
-        }}
-      />
+        aria-hidden
+      >
+        <path
+          ref={pathRef}
+          fill="none"
+          stroke={COLORS.ACCENT_RED}
+          strokeWidth={2}
+        />
+        <circle
+          ref={endpointRef}
+          r={5}
+          fill="rgba(0,0,0,0.65)"
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth={2}
+          style={{ opacity: 0 }}
+        />
+      </svg>
     </>
   )
 }
 
-function CursorFollower({ active }) {
+const CursorFollower = forwardRef(function CursorFollower({ active }, ref) {
   const wrapperRef = useRef(null)
   const animationRef = useRef(null)
   const targetRef = useRef({ x: 0, y: 0 })
@@ -805,7 +976,11 @@ function CursorFollower({ active }) {
 
   return (
     <div
-      ref={wrapperRef}
+      ref={(el) => {
+        wrapperRef.current = el
+        if (typeof ref === 'function') ref(el)
+        else if (ref) ref.current = el
+      }}
       style={{
         position: 'fixed',
         left: 0,
@@ -841,44 +1016,52 @@ function CursorFollower({ active }) {
           }}
         />
         <div
+          data-cursor-inner=""
           style={{
             position: 'relative',
             width: '36px',
             height: '36px',
-            border: '2px solid #ff2b2b',
+            border: `2px solid ${COLORS.ACCENT_RED}`,
             borderRadius: '6px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 0 12px rgba(255,0,0,0.35)',
+            transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
           }}
         >
           <div
+            data-cursor-bar=""
             style={{
               position: 'absolute',
               width: '22px',
               height: '2px',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
+              transition: 'background 0.2s ease-out',
             }}
           />
           <div
+            data-cursor-bar=""
             style={{
               position: 'absolute',
               width: '2px',
               height: '22px',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
+              transition: 'background 0.2s ease-out',
             }}
           />
           <div
+            data-cursor-bar=""
             style={{
               width: '6px',
               height: '6px',
               borderRadius: '50%',
-              background: '#ff2b2b',
+              background: COLORS.ACCENT_RED,
+              transition: 'background 0.2s ease-out',
             }}
           />
         </div>
       </div>
     </div>
   )
-}
+})

@@ -72,6 +72,7 @@ export default function VenueAboutModule({ about = {} }) {
   const services = Array.isArray(about?.services) ? about.services.filter(Boolean) : []
   const partners = Array.isArray(about?.partners) ? about.partners : []
   const crew = Array.isArray(about?.crew) ? about.crew : []
+  const hasPartnersOrCrew = partners.length > 0 || crew.length > 0
 
   // Check if video poster is a GIF - use raw URL to preserve animation (any Sanity transform strips frames)
   const isVideoPosterGif = about?.videoPoster?.asset?.mimeType === 'image/gif'
@@ -214,7 +215,7 @@ export default function VenueAboutModule({ about = {} }) {
           maxWidth: 1600,
           margin: '0 auto',
           display: 'grid',
-          gridTemplateColumns: isStacked ? '1fr' : 'minmax(0, 2.5fr) minmax(280px, 0.9fr)',
+          gridTemplateColumns: isStacked || !hasPartnersOrCrew ? '1fr' : 'minmax(0, 2.5fr) minmax(280px, 0.9fr)',
           gap: isStacked ? '48px' : '60px clamp(32px, 3vw, 80px)',
         }}
       >
@@ -229,12 +230,12 @@ export default function VenueAboutModule({ about = {} }) {
           >
             <h2
               style={{
-                fontSize: 48,
+                fontSize: isStacked ? 'clamp(32px, 10vw, 48px)' : 48,
                 fontWeight: 700,
                 letterSpacing: 0,
                 textTransform: 'uppercase',
                 marginBottom: isStacked ? 24 : 0,
-                whiteSpace: 'nowrap',
+                whiteSpace: isStacked ? 'normal' : 'nowrap',
                 alignSelf: isStacked ? 'flex-start' : 'flex-start',
               }}
             >
@@ -292,23 +293,25 @@ export default function VenueAboutModule({ about = {} }) {
           </div>
         </div>
 
-        <div style={{ paddingRight: isStacked ? 0 : 10 }}>
-          <div
-            style={{
+        {hasPartnersOrCrew && (
+          <div style={{ paddingRight: isStacked ? 0 : 10 }}>
+            <div
+              style={{
+                borderTop: isStacked ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.1)',
+                paddingTop: isStacked ? 48 : 32,
+                marginBottom: isStacked ? 56 : 48,
+              }}
+            >
+              {renderList('The Partners', partners, isStacked)}
+            </div>
+            <div style={{
               borderTop: isStacked ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.1)',
               paddingTop: isStacked ? 48 : 32,
-              marginBottom: isStacked ? 56 : 48,
-            }}
-          >
-            {renderList('The Partners', partners, isStacked)}
+            }}>
+              {renderList('The Crew', crew, isStacked)}
+            </div>
           </div>
-          <div style={{
-            borderTop: isStacked ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.1)',
-            paddingTop: isStacked ? 48 : 32,
-          }}>
-            {renderList('The Crew', crew, isStacked)}
-          </div>
-        </div>
+        )}
       </div>
     </section>
   )

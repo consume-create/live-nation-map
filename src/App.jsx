@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import MapPage from './pages/MapPage'
-import VenuePage from './pages/VenuePage'
+const venuePageImport = () => import('./pages/VenuePage')
+const VenuePage = lazy(venuePageImport)
+// Preload helper — call early so the chunk is cached before navigation
+export const preloadVenuePage = () => { venuePageImport() }
 import { fetchMapPoints, fetchSiteSettings } from './services/mapPoints'
 
 // Default SEO values (fallbacks if Sanity data unavailable)
@@ -172,11 +175,13 @@ export default function App() {
         <Route
           path="/venue/:slug"
           element={
-            <VenuePage
-              mapPoints={mapPoints}
-              pointsLoading={pointsLoading}
-              siteSettings={siteSettings}
-            />
+            <Suspense fallback={<div style={{ background: '#000', width: '100vw', height: '100vh' }} />}>
+              <VenuePage
+                mapPoints={mapPoints}
+                pointsLoading={pointsLoading}
+                siteSettings={siteSettings}
+              />
+            </Suspense>
           }
         />
       </Routes>

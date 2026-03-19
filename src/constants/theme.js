@@ -90,6 +90,10 @@ export const MAP_POINT = {
   SCALE_IDLE: 0.8,
   SCALE_ACTIVE: 0.95,
   Z_OFFSET: 12.5,
+  /** Delay between each pin's entrance (ms) */
+  STAGGER_MS: 80,
+  /** Duration of scale-in animation per pin (ms) */
+  ENTER_DURATION_MS: 1000,
 }
 
 // Camera and flashlight settings

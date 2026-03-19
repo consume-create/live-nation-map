@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { COLORS, ANIMATIONS } from '../constants/theme'
+import { navigateWithFade } from '../utils/navigateWithFade'
 
 export default function RegionAccordion({ title, venues = [] }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -16,7 +17,7 @@ export default function RegionAccordion({ title, venues = [] }) {
   }, [venues])
 
   const handleVenueClick = (slug) => {
-    navigate(`/venue/${slug}`)
+    navigateWithFade(navigate, `/venue/${slug}`)
   }
 
   return (

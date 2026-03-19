@@ -1,7 +1,7 @@
 import { Suspense, useMemo, useEffect, useLayoutEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { Canvas, useLoader } from '@react-three/fiber'
-import { TextureLoader, PlaneGeometry } from 'three'
+import { Canvas } from '@react-three/fiber'
+import { CanvasTexture, PlaneGeometry, LinearFilter, SRGBColorSpace } from 'three'
 import FlashlightPlane from '../FlashlightPlane'
 import VenueGalleryModule from '../modules/VenueGalleryModule'
 import VenueAboutModule from '../modules/VenueAboutModule'
@@ -110,7 +110,7 @@ function sanitizeSvgMarkup(markup, { stripStrokes = false, removeDrawables = fal
   }
 }
 
-const HERO_REVEAL_SLIDE_MS = 0 // Delay before starting reveal animation
+const HERO_REVEAL_SLIDE_MS = 150 // Delay to let hero fade-in before line animation starts
 
 export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const { slug } = useParams()
@@ -119,7 +119,8 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   const [heroLineSvgMarkup, setHeroLineSvgMarkup] = useState(null)
   const [heroArtReady, setHeroArtReady] = useState(false)
   const [heroLineReady, setHeroLineReady] = useState(false)
-  const [allowLineAnimation, setAllowLineAnimation] = useState(false)
+  const [lineAnimationSlug, setLineAnimationSlug] = useState(null)
+  const allowLineAnimation = lineAnimationSlug === slug
   const [showHeroLoader, setShowHeroLoader] = useState(true)
   const [heroLoaderRendered, setHeroLoaderRendered] = useState(true)
   const [heroVisible, setHeroVisible] = useState(false)
@@ -197,7 +198,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
     setHeroLineSvgMarkup(null)
     setHeroArtReady(false)
     setHeroLineReady(false)
-    setAllowLineAnimation(false)
+    setLineAnimationSlug(null)
     setHeroVisible(false)
 
     if (loaderTimeoutRef.current) {
@@ -278,9 +279,6 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
           setHeroLineSvgMarkup(lineMarkup)
           const hasLineMarkup = Boolean(lineMarkup)
           setHeroLineReady(hasLineMarkup)
-          if (!heroLoaderRendered && hasLineMarkup) {
-            setAllowLineAnimation(true)
-          }
           scheduleLoaderHide('hero art ready')
         }
       } catch (error) {
@@ -289,7 +287,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
           setHeroLineSvgMarkup(null)
           setHeroArtReady(false)
           setHeroLineReady(false)
-          setAllowLineAnimation(false)
+          setLineAnimationSlug(null)
           scheduleLoaderHide('hero art failed')
         }
       }
@@ -319,11 +317,12 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
 
   useEffect(() => {
     if (!heroVisible || !heroLineReady) return undefined
+    const currentSlug = slug
     const slideTimer = setTimeout(() => {
-      setAllowLineAnimation(true)
+      setLineAnimationSlug(currentSlug)
     }, HERO_REVEAL_SLIDE_MS)
     return () => clearTimeout(slideTimer)
-  }, [heroVisible, heroLineReady])
+  }, [heroVisible, heroLineReady, slug])
 
   if (!venue) return null
 
@@ -408,7 +407,6 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
               key={venue.slug}
               markup={heroSvgMarkup}
               lineMarkup={heroLineSvgMarkup}
-              stageStyle={heroArtStageStyle}
               venueSlug={venue.slug}
               heroVisible={heroVisible}
               shouldAnimate={allowLineAnimation && heroLineReady}
@@ -418,10 +416,10 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
 
       </div>
 
-      {venue.aboutModule && <VenueAboutModule about={venue.aboutModule} />}
+      {venue.aboutModule && <VenueAboutModule key={`about-${venue.slug}`} about={venue.aboutModule} />}
 
       {venue.gallery && venue.gallery.length > 0 && (
-        <VenueGalleryModule images={venue.gallery} />
+        <VenueGalleryModule key={`gallery-${venue.slug}`} images={venue.gallery} />
       )}
 
       <NextUpModule currentSlug={slug} venues={mapPoints} />
@@ -429,7 +427,7 @@ export default function VenuePage({ mapPoints, pointsLoading, siteSettings }) {
   )
 }
 
-function HeroArtLayers({ markup, lineMarkup, stageStyle, venueSlug, heroVisible, shouldAnimate }) {
+function HeroArtLayers({ markup, lineMarkup, venueSlug, heroVisible, shouldAnimate }) {
   const stageRef = useRef(null)
   const staticRef = useRef(null)
   const lineRef = useRef(null)
@@ -448,7 +446,16 @@ function HeroArtLayers({ markup, lineMarkup, stageStyle, venueSlug, heroVisible,
   }, [markup, lineMarkup])
 
   return (
-    <div ref={stageRef} style={stageStyle}>
+    <div
+      ref={stageRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        aspectRatio: '1920 / 1080',
+        overflow: 'hidden',
+      }}
+    >
       <div
         ref={staticRef}
         style={{
@@ -715,23 +722,44 @@ function LogoFlashlight({ logoUrl, aspectRatio = 5.2, scaleMultiplier = 1, onAsp
     [geometry]
   )
 
-  const texture = useLoader(TextureLoader, logoUrl, (loader) => {
-    loader.setCrossOrigin?.('anonymous')
-  })
+  // Rasterize SVG at high resolution for crisp texture
+  const [texture, setTexture] = useState(null)
+  const onAspectResolvedRef = useRef(onAspectResolved)
+  onAspectResolvedRef.current = onAspectResolved
 
   useEffect(() => {
-    if (!texture?.image) return undefined
-    const image = texture.image
-    const width = image.naturalWidth || image.videoWidth || image.width
-    const height = image.naturalHeight || image.videoHeight || image.height
-    if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
-      const ratio = width / height
-      if (ratio > 0 && typeof onAspectResolved === 'function') {
-        onAspectResolved(ratio)
+    if (!logoUrl) return
+    let cancelled = false
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      if (cancelled) return
+      const svgW = img.naturalWidth || img.width || 400
+      const svgH = img.naturalHeight || img.height || 80
+      const ratio = svgW / svgH
+      if (ratio > 0 && typeof onAspectResolvedRef.current === 'function') {
+        onAspectResolvedRef.current(ratio)
       }
+      // Render at 4x resolution for crispness
+      const scale = 4
+      const canvasW = svgW * scale
+      const canvasH = svgH * scale
+      const canvas = document.createElement('canvas')
+      canvas.width = canvasW
+      canvas.height = canvasH
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, canvasW, canvasH)
+      const tex = new CanvasTexture(canvas)
+      tex.minFilter = LinearFilter
+      tex.magFilter = LinearFilter
+      tex.generateMipmaps = false
+      tex.colorSpace = SRGBColorSpace
+      tex.needsUpdate = true
+      setTexture(tex)
     }
-    return undefined
-  }, [texture, onAspectResolved])
+    img.src = logoUrl
+    return () => { cancelled = true }
+  }, [logoUrl])
 
   const viewWidthAtCamera =
     2 * CAMERA.FLASHLIGHT_DISTANCE * Math.tan(Math.max(FLASHLIGHT_FOV_RAD / 2, 0.001))
@@ -740,6 +768,8 @@ function LogoFlashlight({ logoUrl, aspectRatio = 5.2, scaleMultiplier = 1, onAsp
   const scaledPlaneWidth = planeWidth * baseScale
   const fitScale = scaledPlaneWidth > viewWidthAtCamera ? viewWidthAtCamera / scaledPlaneWidth : 1
   const finalScale = baseScale * fitScale
+
+  if (!texture) return null
 
   return (
     <FlashlightPlane
