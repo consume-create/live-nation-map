@@ -19,6 +19,7 @@ const LOGO_PATHS = [
   "M1227.23 361.657L1122.81 240.734H1049.87V469.92H1124.93V351.28L1228.67 469.92H1301.58V240.734H1227.23V361.657Z",
 ]
 
+
 // Animation sequence - animate by visual groups from left to right
 const ANIMATION_GROUPS = [
   { pathIndices: [1], delay: 0 },       // L (top-left)
