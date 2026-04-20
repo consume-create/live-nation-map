@@ -11,7 +11,9 @@ export default function FlashlightPlane({
   position = [0, 0, 0],
   scale = [1, 1, 1],
   configureParams,
-  showControls = false
+  showControls = false,
+  pointerOverride = null,
+  externalParams = null
 }) {
   const generatedGeometry = useMemo(() => {
     if (geometry) return null
@@ -26,6 +28,7 @@ export default function FlashlightPlane({
   const planeGeometry = geometry ?? generatedGeometry
 
   const params = useMemo(() => {
+    if (externalParams) return externalParams
     const base = {
       radius: 0.63,
       feather: 0.83,
@@ -43,7 +46,7 @@ export default function FlashlightPlane({
     }
 
     return base
-  }, [configureParams])
+  }, [configureParams, externalParams])
 
   useFlashlightPlaneGUI(params, showControls)
 
@@ -66,17 +69,33 @@ export default function FlashlightPlane({
 
     uniforms.uTime.value = elapsed
 
-    const speed = Math.max(params.sweepSpeed, 0.0001)
-    const phaseTime = elapsed * speed
+    let pointerX
+    let pointerY
 
-    const sweepPhase = params.pingPong
-      ? 0.5 * (Math.sin(phaseTime * Math.PI * 2.0 - Math.PI / 2) + 1.0)
-      : phaseTime - Math.floor(phaseTime)
+    if (pointerOverride) {
+      pointerX = MathUtils.clamp(
+        typeof pointerOverride.x === 'number' ? pointerOverride.x : 0.5,
+        0,
+        1
+      )
+      pointerY = MathUtils.clamp(
+        typeof pointerOverride.y === 'number' ? pointerOverride.y : params.sweepY,
+        0,
+        1
+      )
+    } else {
+      const speed = Math.max(params.sweepSpeed, 0.0001)
+      const phaseTime = elapsed * speed
 
-    const minX = MathUtils.clamp(Math.min(params.sweepMin, params.sweepMax), 0, 1)
-    const maxX = MathUtils.clamp(Math.max(params.sweepMin, params.sweepMax), 0, 1)
-    const pointerX = MathUtils.lerp(minX, maxX, sweepPhase)
-    const pointerY = MathUtils.clamp(params.sweepY, 0, 1)
+      const sweepPhase = params.pingPong
+        ? 0.5 * (Math.sin(phaseTime * Math.PI * 2.0 - Math.PI / 2) + 1.0)
+        : phaseTime - Math.floor(phaseTime)
+
+      const minX = MathUtils.clamp(Math.min(params.sweepMin, params.sweepMax), 0, 1)
+      const maxX = MathUtils.clamp(Math.max(params.sweepMin, params.sweepMax), 0, 1)
+      pointerX = MathUtils.lerp(minX, maxX, sweepPhase)
+      pointerY = MathUtils.clamp(params.sweepY, 0, 1)
+    }
 
     uniforms.uPointer.value.set(pointerX, pointerY)
     uniforms.uRadius.value = Math.max(params.radius, 0.0001)

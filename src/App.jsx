@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import MapPage from './pages/MapPage'
 const venuePageImport = () => import('./pages/VenuePage')
 const VenuePage = lazy(venuePageImport)
+const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'))
 // Preload helper — call early so the chunk is cached before navigation
 export const preloadVenuePage = () => { venuePageImport() }
 import { fetchMapPoints, fetchSiteSettings } from './services/mapPoints'
@@ -241,6 +242,14 @@ export default function App() {
                 pointsLoading={pointsLoading}
                 siteSettings={siteSettings}
               />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/playground"
+          element={
+            <Suspense fallback={<div style={{ background: '#000', width: '100vw', height: '100vh' }} />}>
+              <PlaygroundPage mapPoints={mapPoints} pointsLoading={pointsLoading} />
             </Suspense>
           }
         />
